@@ -1,0 +1,44 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null && request.auth.token.email is string;
+    }
+
+    function allowedEditor() {
+      return signedIn() && request.auth.token.email in [
+        'y-togashi@ych-exceed.com',
+        'koseki@ych-exceed.com',
+        'yamamoto@ych-exceed.com',
+        'tegawa@ych-exceed.com',
+        'hidetoshi-konno@besto-haus.com',
+        'homma@ych-exceed.com',
+        'teppei-kikuchi@exceed-group.co.jp',
+        'yamagishi@besto-haus.com',
+        'nabeshima@ych-exceed.com',
+        'masaki-hasegawa@besto-haus.com',
+        'hayasaka@ych-exceed.com',
+        'takeuchi_23@besto-haus.com',
+        'senri-ishikawa@exceed-group.co.jp',
+        'matsumoto@ych-exceed.com',
+        'imai@ych-exceed.com',
+        'yasutaka-saito@ych-exceed.com',
+        'sakai@ych-exceed.com'
+      ];
+    }
+
+    match /dashboards/marche2026 {
+      allow read: if true;
+      allow create, update: if allowedEditor()
+        && request.resource.data.updatedBy.email == request.auth.token.email;
+      allow delete: if false;
+
+      match /auditLogs/{logId} {
+        allow read: if allowedEditor();
+        allow create: if allowedEditor()
+          && request.resource.data.changedBy.email == request.auth.token.email;
+        allow update, delete: if false;
+      }
+    }
+  }
+}
