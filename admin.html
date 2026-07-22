@@ -49,7 +49,7 @@
     <input id="search" placeholder="名前・電話・メールで検索" />
     <button class="btn" id="csv">CSVを書き出す</button>
   </div>
-  <table><thead><tr><th>名前</th><th>時間帯</th><th>電話</th><th>状態</th><th>受付時刻</th><th></th></tr></thead>
+  <table><thead><tr><th>種別</th><th>名前</th><th>時間帯</th><th>電話</th><th>状態</th><th>受付時刻</th><th></th></tr></thead>
   <tbody id="rows"></tbody></table>
 </div>
 
@@ -92,7 +92,7 @@
       const at = r.checkedInAt&&r.checkedInAt.toDate ? fmt(r.checkedInAt.toDate()) : "";
       const pill = r.checkedIn?'<span class="pill in">受付済</span>':'<span class="pill out">未受付</span>';
       const btn = r.checkedIn?'<button class="act" data-un="'+r.id+'">受付取消</button>':'<button class="act" data-in="'+r.id+'">手動受付</button>';
-      return '<tr><td>'+esc(r.name)+'</td><td>'+esc(r.slot)+'</td><td>'+esc(r.tel||"")+'</td><td>'+pill+'</td><td>'+at+'</td><td>'+btn+'</td></tr>';
+      return '<tr><td>'+esc(typeLabel(r.registrationType))+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.slot)+'</td><td>'+esc(r.tel||"")+'</td><td>'+pill+'</td><td>'+at+'</td><td>'+btn+'</td></tr>';
     }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(b=>b.onclick=()=>setCheck(b.dataset.in,true));
     $("rows").querySelectorAll("[data-un]").forEach(b=>b.onclick=()=>setCheck(b.dataset.un,false));
@@ -102,13 +102,14 @@
     checkedInBy: val?(auth.currentUser&&auth.currentUser.email):null }); }
 
   $("csv").onclick = () => {
-    const head=["名前","時間帯","電話","メール","住所","受付","受付時刻"];
-    const lines=[head.join(",")].concat(all.map(r=>[r.name,r.slot,r.tel,r.email,r.address,
+    const head=["受付種別","名前","時間帯","電話","メール","住所","来場人数","会社・店舗名","ご担当・出店名","受付","受付時刻"];
+    const lines=[head.join(",")].concat(all.map(r=>[typeLabel(r.registrationType),r.name,r.slot,r.tel,r.email,r.address,r.partySize,r.company,r.booth,
       r.checkedIn?"済":"未", r.checkedInAt&&r.checkedInAt.toDate?fmt(r.checkedInAt.toDate()):""].map(cell).join(",")));
     const blob=new Blob(["\uFEFF"+lines.join("\n")],{type:"text/csv"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="marche2026_"+Date.now()+".csv"; a.click();
   };
   function fmt(d){ return d.toLocaleString("ja-JP",{month:"numeric",day:"numeric",hour:"2-digit",minute:"2-digit"}); }
+  function typeLabel(type){ return ({owner:"オーナー様", general:"一般", vendor:"業者"})[type] || "一般"; }
   function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
   function cell(s){ s=String(s??""); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; }
 </script>

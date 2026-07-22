@@ -15,6 +15,7 @@ service cloud.firestore {
           && d.email is string && d.email.size() <= 200
           && d.tel is string && d.tel.size() <= 40
           && d.slot is string && d.slot.size() <= 40
+          && d.registrationType in ['owner', 'general', 'vendor']
           && d.checkedIn == false && d.checkedInAt == null;
     }
     function onlyCheckin() {

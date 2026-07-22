@@ -1,6 +1,9 @@
 # Life Style Market 2026 — 予約＆受付システム
 
-- 予約フォーム（ブランド版）: `index.html`
+- 受付フォーム（種別を選択）: `index.html`
+- オーナー様用受付フォーム: `owner.html`
+- 一般用受付フォーム: `general.html`
+- 業者用受付フォーム: `vendor.html`
 - QRチケット再表示: `ticket.html`
 - 受付スキャナー（スタッフ）: `checkin.html`
 - 運営ダッシュボード: `admin.html`
@@ -63,7 +66,10 @@ Source: **Deploy from a branch** → Branch: **main** / **/(root)** → Save。
 
 ### 公開URL
 ```
-https://<あなた>.github.io/marche_project/            ← 予約フォーム
+https://<あなた>.github.io/marche_project/            ← 受付フォーム
+https://<あなた>.github.io/marche_project/owner.html  ← オーナー様用
+https://<あなた>.github.io/marche_project/general.html ← 一般用
+https://<あなた>.github.io/marche_project/vendor.html ← 業者用
 https://<あなた>.github.io/marche_project/checkin.html ← 受付（スタッフ）
 https://<あなた>.github.io/marche_project/admin.html   ← 運営
 ```

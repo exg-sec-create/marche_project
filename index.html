@@ -39,10 +39,29 @@
       </div>
     </div>
 
-    <div class="section-title"><span>来場予約</span></div>
-    <p class="lead">ご入力後に表示されるQRチケットを、当日受付でご提示ください🎪</p>
+    <div class="section-title"><span id="formHeading">受付フォーム</span></div>
+    <p class="lead">該当する受付種別を選び、ご入力後に表示されるQRチケットを当日受付でご提示ください🎪</p>
 
     <div class="card">
+      <fieldset class="form-types">
+        <legend class="req">受付種別を選んでください</legend>
+        <div class="type-grid" id="formTypes">
+          <button type="button" class="type-card sel" data-type="owner" aria-pressed="true"><span class="type-icon">🏠</span><span><b>オーナー様用</b><small>お住まいのオーナー様</small></span></button>
+          <button type="button" class="type-card" data-type="general" aria-pressed="false"><span class="type-icon">🎪</span><span><b>一般用</b><small>ご来場のお客様</small></span></button>
+          <button type="button" class="type-card" data-type="vendor" aria-pressed="false"><span class="type-icon">🏪</span><span><b>業者用</b><small>出店・お取引先様</small></span></button>
+        </div>
+      </fieldset>
+
+      <div class="form-type-note" id="typeNote">オーナー様として受付します。ご来場人数をご入力ください。</div>
+
+      <div id="vendorFields" hidden>
+        <label class="req" for="company">会社・店舗名</label>
+        <input id="company" autocomplete="organization" placeholder="株式会社○○ / ○○店" />
+
+        <label class="req" for="booth">ご担当・出店名</label>
+        <input id="booth" placeholder="ご担当者名 または 出店名" />
+      </div>
+
       <label class="req" for="name">お名前</label>
       <input id="name" autocomplete="name" placeholder="山田 太郎" />
 
@@ -55,13 +74,22 @@
       <label for="address">ご住所<span class="hint" style="font-weight:400">（任意）</span></label>
       <input id="address" autocomplete="street-address" placeholder="○○市○○町1-2-3" />
 
+      <div id="visitorFields">
+        <label class="req" for="partySize">ご来場人数</label>
+        <select id="partySize">
+          <option value="">選択してください</option>
+          <option value="1">1名</option><option value="2">2名</option><option value="3">3名</option>
+          <option value="4">4名</option><option value="5">5名</option><option value="6+">6名以上</option>
+        </select>
+      </div>
+
       <label class="req">来場時間帯を選んでください</label>
       <div class="chips" id="chips"></div>
 
       <div class="info">🅿️ <span><b>駐車場について</b><br><span id="parking">駐車場は随時ご案内します。</span></span></div>
 
       <div id="err" class="error-box" style="display:none"></div>
-      <button id="submit" class="btn">🎟️ 予約してQRチケットをGET！</button>
+      <button id="submit" class="btn">🎟️ 受付してQRチケットをGET！</button>
       <p class="hint" style="text-align:center">次の画面でQRを表示します。スクリーンショットの保存がおすすめです。</p>
     </div>
 
@@ -78,6 +106,7 @@
       <div class="body">
         <div class="evt">Life Style Market 2026</div>
         <div class="name" id="tName"></div>
+        <span class="slot" id="tType"></span>
         <span class="slot" id="tSlot"></span>
         <div class="qrbox" id="qr"></div>
         <div class="hint" id="tDate"></div>
@@ -129,6 +158,39 @@
     }
   })();
 
+  const FORM_TYPES = {
+    owner: { label: "オーナー様", note: "オーナー様として受付します。ご来場人数をご入力ください。" },
+    general: { label: "一般", note: "一般のお客様として受付します。ご来場人数をご入力ください。" },
+    vendor: { label: "業者", note: "業者様として受付します。会社・店舗名とご担当・出店名をご入力ください。" },
+  };
+  const requestedType = new URLSearchParams(location.search).get("type");
+  const fixedType = Object.hasOwn(FORM_TYPES, requestedType) ? requestedType : "";
+  let selectedType = fixedType || "owner";
+
+  function selectFormType(type) {
+    selectedType = type;
+    $("formTypes").querySelectorAll(".type-card").forEach(card => {
+      const selected = card.dataset.type === type;
+      card.classList.toggle("sel", selected);
+      card.setAttribute("aria-pressed", selected);
+    });
+    const isVendor = type === "vendor";
+    $("vendorFields").hidden = !isVendor;
+    $("visitorFields").hidden = isVendor;
+    $("typeNote").textContent = FORM_TYPES[type].note;
+    if (fixedType) {
+      $("formTypes").hidden = true;
+      $("formHeading").textContent = FORM_TYPES[type].label + "用受付フォーム";
+    }
+  }
+
+  $("formTypes").addEventListener("click", event => {
+    const button = event.target.closest("[data-type]");
+    if (!button) return;
+    selectFormType(button.dataset.type);
+  });
+  selectFormType(selectedType);
+
   // 時間帯チップ
   let selectedSlot = "";
   const chipWrap = $("chips");
@@ -149,13 +211,19 @@
   $("submit").addEventListener("click", async () => {
     $("err").style.display = "none";
     const data = {
+      registrationType: selectedType,
       name: $("name").value.trim(), tel: $("tel").value.trim(),
       email: $("email").value.trim(), address: $("address").value.trim(),
       slot: selectedSlot,
+      partySize: $("partySize").value,
+      company: $("company").value.trim(), booth: $("booth").value.trim(),
     };
     if (!data.name) return showErr("お名前を入力してください。");
     if (!data.tel) return showErr("電話番号を入力してください。");
     if (!isEmail(data.email)) return showErr("メールアドレスの形式が正しくありません。");
+    if (data.registrationType !== "vendor" && !data.partySize) return showErr("ご来場人数を選択してください。");
+    if (data.registrationType === "vendor" && !data.company) return showErr("会社・店舗名を入力してください。");
+    if (data.registrationType === "vendor" && !data.booth) return showErr("ご担当・出店名を入力してください。");
     if (!data.slot) return showErr("来場時間帯を選択してください。");
 
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信中…";
@@ -163,18 +231,18 @@
       if (window.SLOT_CAPACITY) {
         const snap = await db.collection("registrations").where("slot","==",data.slot).get();
         if (snap.size >= window.SLOT_CAPACITY) {
-          btn.disabled=false; btn.textContent="🎟️ 予約してQRチケットをGET！";
+          btn.disabled=false; btn.textContent="🎟️ 受付してQRチケットをGET！";
           return showErr("申し訳ありません。この時間帯は満席です。別の時間帯をお選びください。");
         }
       }
       const ref = await db.collection("registrations").add({
-        ...data, checkedIn:false, checkedInAt:null, checkedInBy:null,
+          ...data, checkedIn:false, checkedInAt:null, checkedInBy:null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
       renderTicket(ref.id, data);
     } catch (e) {
       console.error(e);
-      btn.disabled=false; btn.textContent="🎟️ 予約してQRチケットをGET！";
+      btn.disabled=false; btn.textContent="🎟️ 受付してQRチケットをGET！";
       showErr("送信に失敗しました。通信環境をご確認のうえ再度お試しください。");
     }
   });
@@ -182,6 +250,7 @@
   function renderTicket(id, data) {
     const url = siteBase() + "ticket.html?id=" + id;
     $("tName").textContent = data.name + " 様";
+    $("tType").textContent = FORM_TYPES[data.registrationType].label + "受付";
     $("tSlot").textContent = "来場 " + data.slot;
     $("tDate").textContent = (E.dateLabel||"") + " " + (E.dow||"") + " ・ " + (E.timeLabel||"");
     $("tVenue").textContent = "会場：" + (E.venue||"");

@@ -99,8 +99,28 @@ label { display: block; font-weight: 700; font-size: .92rem; margin: 16px 0 7px;
 input {
   width: 100%; padding: 14px 15px; font-size: 16px; color: var(--ink);
   border: 2px solid var(--line); border-radius: 12px; background: #fff; font-family: inherit; }
-input:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px rgba(121,198,208,.28); }
+select {
+  width: 100%; padding: 14px 15px; font-size: 16px; color: var(--ink);
+  border: 2px solid var(--line); border-radius: 12px; background: #fff; font-family: inherit; }
+input:focus, select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px rgba(121,198,208,.28); }
 .hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
+
+/* 受付種別 */
+.form-types { border: 0; padding: 0; margin: 0 0 18px; }
+.form-types legend { padding: 0; }
+.type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.type-card { appearance: none; cursor: pointer; min-height: 104px; padding: 12px 8px;
+  border: 2px solid var(--line); border-radius: 12px; background: #fff; color: var(--ink);
+  font: inherit; line-height: 1.35; text-align: center; }
+.type-card:hover { border-color: var(--teal); }
+.type-card.sel { color: var(--blue); background: #eef7fa; border-color: var(--blue); box-shadow: 0 0 0 2px rgba(26,95,168,.12); }
+.type-card b, .type-card small { display: block; }
+.type-card b { font-size: .9rem; margin-top: 3px; }
+.type-card small { color: var(--muted); font-size: .7rem; margin-top: 3px; }
+.type-icon { font-size: 1.45rem; }
+.form-type-note { background: #f0f8ec; border: 1px solid #cfe6bf; border-radius: 12px;
+  color: #3f6b25; font-size: .85rem; padding: 10px 12px; }
+@media (max-width: 380px) { .type-card { min-height: 96px; padding: 10px 4px; } .type-card b { font-size: .82rem; } }
 
 /* 時間帯チップ（チケット風） */
 .chips { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px,1fr)); gap: 10px; }
