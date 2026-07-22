@@ -1,6 +1,6 @@
 # Life Style Market 2026 — 予約＆受付システム
 
-- 受付フォーム（種別を選択）: `index.html`
+- 受付フォーム（一般用）: `index.html`
 - オーナー様用受付フォーム: `owner.html`
 - 一般用受付フォーム: `general.html`
 - 業者用受付フォーム: `vendor.html`

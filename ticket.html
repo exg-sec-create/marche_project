@@ -36,7 +36,7 @@
       const url = location.href;
       const typeLabel = ({owner:"オーナー様", general:"一般", vendor:"業者"})[d.registrationType] || "一般";
       box.innerHTML =
-        '<div class="ticket"><div class="top"></div><div class="body">' +
+        '<div class="ticket ticket-'+esc(d.registrationType)+'"><div class="top"></div><div class="body">' +
         '<div class="evt">'+(E.name||"")+' '+(E.year||"")+'</div>' +
         '<div class="name">'+esc(d.name)+' 様</div>' +
         '<span class="slot">'+typeLabel+'受付</span>' +

@@ -96,13 +96,14 @@ body {
 
 label { display: block; font-weight: 700; font-size: .92rem; margin: 16px 0 7px; }
 .req::after { content: " *"; color: var(--red); }
-input {
+input, textarea {
   width: 100%; padding: 14px 15px; font-size: 16px; color: var(--ink);
   border: 2px solid var(--line); border-radius: 12px; background: #fff; font-family: inherit; }
 select {
   width: 100%; padding: 14px 15px; font-size: 16px; color: var(--ink);
   border: 2px solid var(--line); border-radius: 12px; background: #fff; font-family: inherit; }
-input:focus, select:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px rgba(121,198,208,.28); }
+textarea { resize: vertical; min-height: 108px; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--teal); box-shadow: 0 0 0 4px rgba(121,198,208,.28); }
 .hint { font-size: .82rem; color: var(--muted); margin-top: 6px; }
 
 /* 受付種別 */
@@ -164,6 +165,17 @@ input:focus, select:focus { outline: none; border-color: var(--teal); box-shadow
   border-radius:50%; transform: translateY(-50%); }
 .ticket .notch.l { left:-12px; } .ticket .notch.r { right:-12px; }
 .ticket .foot { padding: 14px 22px 20px; font-size:.82rem; color:var(--muted); text-align:center; }
+
+/* 受付種別ごとのQRチケット表示色 */
+.ticket-owner { --ticket-color: var(--blue); --ticket-soft: #eaf4fd; }
+.ticket-general { --ticket-color: #e87920; --ticket-soft: #fff1e5; }
+.ticket-vendor { --ticket-color: #3f8f42; --ticket-soft: #edf8ed; }
+.ticket-owner, .ticket-general, .ticket-vendor { border-color: var(--ticket-color); }
+.ticket-owner .top, .ticket-general .top, .ticket-vendor .top {
+  background: repeating-linear-gradient(90deg, var(--ticket-color) 0 var(--stripe), #fff var(--stripe) calc(var(--stripe) * 2));
+}
+.ticket-owner .evt, .ticket-general .evt, .ticket-vendor .evt { color: var(--ticket-color); }
+.ticket-owner .slot, .ticket-general .slot, .ticket-vendor .slot { background: var(--ticket-soft); color: var(--ticket-color); }
 
 .pagefoot { text-align:center; color:var(--blue); font-weight:700; margin-top:28px; font-size:.95rem; }
 :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }

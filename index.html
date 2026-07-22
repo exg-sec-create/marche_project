@@ -40,10 +40,10 @@
     </div>
 
     <div class="section-title"><span id="formHeading">受付フォーム</span></div>
-    <p class="lead">該当する受付種別を選び、ご入力後に表示されるQRチケットを当日受付でご提示ください🎪</p>
+    <p class="lead">ご入力後に表示されるQRチケットを当日受付でご提示ください🎪</p>
 
     <div class="card">
-      <fieldset class="form-types">
+      <fieldset class="form-types" id="formTypePicker">
         <legend class="req">受付種別を選んでください</legend>
         <div class="type-grid" id="formTypes">
           <button type="button" class="type-card sel" data-type="owner" aria-pressed="true"><span class="type-icon">🏠</span><span><b>オーナー様用</b><small>お住まいのオーナー様</small></span></button>
@@ -74,6 +74,9 @@
       <label for="address">ご住所<span class="hint" style="font-weight:400">（任意）</span></label>
       <input id="address" autocomplete="street-address" placeholder="○○市○○町1-2-3" />
 
+      <label for="remarks">備考<span class="hint" style="font-weight:400">（任意）</span></label>
+      <textarea id="remarks" rows="4" placeholder="ご連絡事項などがあればご入力ください"></textarea>
+
       <div id="visitorFields">
         <label class="req" for="partySize">ご来場人数</label>
         <select id="partySize">
@@ -101,7 +104,7 @@
     <div class="section-title"><span>予約完了 🎉</span></div>
     <p class="lead">このQRを当日、受付でご提示ください。</p>
 
-    <div class="ticket">
+    <div class="ticket" id="issuedTicket">
       <div class="top"></div>
       <div class="body">
         <div class="evt">Life Style Market 2026</div>
@@ -164,8 +167,9 @@
     vendor: { label: "業者", note: "業者様として受付します。会社・店舗名とご担当・出店名をご入力ください。" },
   };
   const requestedType = new URLSearchParams(location.search).get("type");
-  const fixedType = Object.hasOwn(FORM_TYPES, requestedType) ? requestedType : "";
-  let selectedType = fixedType || "owner";
+  // 専用URLごとに受付種別を固定し、フォーム上では他の種別へ移動できないようにする。
+  const fixedType = Object.hasOwn(FORM_TYPES, requestedType) ? requestedType : "general";
+  let selectedType = fixedType;
 
   function selectFormType(type) {
     selectedType = type;
@@ -178,10 +182,8 @@
     $("vendorFields").hidden = !isVendor;
     $("visitorFields").hidden = isVendor;
     $("typeNote").textContent = FORM_TYPES[type].note;
-    if (fixedType) {
-      $("formTypes").hidden = true;
-      $("formHeading").textContent = FORM_TYPES[type].label + "用受付フォーム";
-    }
+    $("formTypePicker").hidden = true;
+    $("formHeading").textContent = FORM_TYPES[type].label + "用受付フォーム";
   }
 
   $("formTypes").addEventListener("click", event => {
@@ -213,7 +215,7 @@
     const data = {
       registrationType: selectedType,
       name: $("name").value.trim(), tel: $("tel").value.trim(),
-      email: $("email").value.trim(), address: $("address").value.trim(),
+      email: $("email").value.trim(), address: $("address").value.trim(), remarks: $("remarks").value.trim(),
       slot: selectedSlot,
       partySize: $("partySize").value,
       company: $("company").value.trim(), booth: $("booth").value.trim(),
@@ -250,6 +252,7 @@
   function renderTicket(id, data) {
     const url = siteBase() + "ticket.html?id=" + id;
     $("tName").textContent = data.name + " 様";
+    $("issuedTicket").className = "ticket ticket-" + data.registrationType;
     $("tType").textContent = FORM_TYPES[data.registrationType].label + "受付";
     $("tSlot").textContent = "来場 " + data.slot;
     $("tDate").textContent = (E.dateLabel||"") + " " + (E.dow||"") + " ・ " + (E.timeLabel||"");

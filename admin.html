@@ -7,7 +7,7 @@
 <link rel="stylesheet" href="styles.css" />
 <style>
   .wrap { max-width: 1080px; }
-  .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:4px 0 18px; }
+  .stats { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:4px 0 18px; }
   .stat { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; }
   .stat .n { font-size:1.8rem; font-weight:800; } .stat .l { font-size:.78rem; color:var(--muted); }
   .slotgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:18px; }
@@ -21,6 +21,7 @@
   th { background:#eef5fb; font-size:.78rem; color:var(--muted); } tr:last-child td { border-bottom:none; }
   .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.78rem; font-weight:700; }
   .pill.in { background:#e2f5e6; color:#166534; } .pill.out { background:#eef1f4; color:#71808a; }
+  .pill.type-owner { background:#eaf4fd; color:#1a5fa8; } .pill.type-general { background:#fff1e5; color:#c55b0b; } .pill.type-vendor { background:#edf8ed; color:#2f7a33; }
   .act { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; font-size:.8rem; cursor:pointer; font-family:inherit; }
   .login { max-width:380px; margin:44px auto; } .login input { margin-bottom:10px; }
 </style>
@@ -41,8 +42,9 @@
   </div>
   <div class="stats">
     <div class="stat"><div class="n" id="sTotal">0</div><div class="l">予約総数</div></div>
-    <div class="stat"><div class="n" id="sIn" style="color:var(--green)">0</div><div class="l">受付済み</div></div>
-    <div class="stat"><div class="n" id="sOut">0</div><div class="l">未受付</div></div>
+    <div class="stat"><div class="n" id="sOwner" style="color:var(--blue)">0</div><div class="l">オーナー様</div></div>
+    <div class="stat"><div class="n" id="sGeneral" style="color:#e87920">0</div><div class="l">一般</div></div>
+    <div class="stat"><div class="n" id="sVendor" style="color:#3f8f42">0</div><div class="l">業者</div></div>
   </div>
   <div class="slotgrid" id="slotGrid"></div>
   <div class="toolbar">
@@ -81,8 +83,10 @@
   $("search").addEventListener("input", render);
   function render(){
     const q = $("search").value.trim().toLowerCase();
-    const inC = all.filter(r=>r.checkedIn).length;
-    $("sTotal").textContent=all.length; $("sIn").textContent=inC; $("sOut").textContent=all.length-inC;
+    $("sTotal").textContent=all.length;
+    $("sOwner").textContent=all.filter(r=>r.registrationType==="owner").length;
+    $("sGeneral").textContent=all.filter(r=>r.registrationType==="general").length;
+    $("sVendor").textContent=all.filter(r=>r.registrationType==="vendor").length;
     const grid=$("slotGrid"); grid.innerHTML="";
     (window.TIME_SLOTS||[]).forEach(s=>{ const l=all.filter(r=>r.slot===s); const di=l.filter(r=>r.checkedIn).length;
       const c=document.createElement("div"); c.className="slotcard";
@@ -92,7 +96,7 @@
       const at = r.checkedInAt&&r.checkedInAt.toDate ? fmt(r.checkedInAt.toDate()) : "";
       const pill = r.checkedIn?'<span class="pill in">受付済</span>':'<span class="pill out">未受付</span>';
       const btn = r.checkedIn?'<button class="act" data-un="'+r.id+'">受付取消</button>':'<button class="act" data-in="'+r.id+'">手動受付</button>';
-      return '<tr><td>'+esc(typeLabel(r.registrationType))+'</td><td>'+esc(r.name)+'</td><td>'+esc(r.slot)+'</td><td>'+esc(r.tel||"")+'</td><td>'+pill+'</td><td>'+at+'</td><td>'+btn+'</td></tr>';
+      return '<tr><td><span class="pill type-'+esc(r.registrationType||"general")+'">'+esc(typeLabel(r.registrationType))+'</span></td><td>'+esc(r.name)+'</td><td>'+esc(r.slot)+'</td><td>'+esc(r.tel||"")+'</td><td>'+pill+'</td><td>'+at+'</td><td>'+btn+'</td></tr>';
     }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(b=>b.onclick=()=>setCheck(b.dataset.in,true));
     $("rows").querySelectorAll("[data-un]").forEach(b=>b.onclick=()=>setCheck(b.dataset.un,false));
@@ -102,8 +106,8 @@
     checkedInBy: val?(auth.currentUser&&auth.currentUser.email):null }); }
 
   $("csv").onclick = () => {
-    const head=["受付種別","名前","時間帯","電話","メール","住所","来場人数","会社・店舗名","ご担当・出店名","受付","受付時刻"];
-    const lines=[head.join(",")].concat(all.map(r=>[typeLabel(r.registrationType),r.name,r.slot,r.tel,r.email,r.address,r.partySize,r.company,r.booth,
+    const head=["受付種別","名前","時間帯","電話","メール","住所","備考","来場人数","会社・店舗名","ご担当・出店名","受付","受付時刻"];
+    const lines=[head.join(",")].concat(all.map(r=>[typeLabel(r.registrationType),r.name,r.slot,r.tel,r.email,r.address,r.remarks,r.partySize,r.company,r.booth,
       r.checkedIn?"済":"未", r.checkedInAt&&r.checkedInAt.toDate?fmt(r.checkedInAt.toDate()):""].map(cell).join(",")));
     const blob=new Blob(["\uFEFF"+lines.join("\n")],{type:"text/csv"});
     const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="marche2026_"+Date.now()+".csv"; a.click();
