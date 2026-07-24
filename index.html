@@ -86,6 +86,47 @@
         </select>
       </div>
 
+      <div id="generalSurvey" class="survey" hidden>
+        <div class="survey-heading">
+          <span class="survey-icon" aria-hidden="true">🏠</span>
+          <div><strong>かんたんアンケート</strong><small>ご興味に合ったご案内のためにお聞かせください</small></div>
+        </div>
+
+        <label class="req" for="homeInterest">住まいづくりに興味はありますか？</label>
+        <select id="homeInterest">
+          <option value="">選択してください</option>
+          <option value="interested">興味がある</option>
+          <option value="not_interested">今回は興味がない</option>
+        </select>
+
+        <div id="followUpQuestions" hidden>
+          <label class="req" for="homeStage">現在のご状況を教えてください</label>
+          <select id="homeStage">
+            <option value="">選択してください</option>
+            <option value="considering">検討中</option>
+            <option value="not_considering">検討していない</option>
+            <option value="already_built">すでに建築している</option>
+          </select>
+
+          <label class="req" for="brandAwareness">どちらに興味がありますか？</label>
+          <select id="brandAwareness">
+            <option value="">選択してください</option>
+            <option value="exceed_home">EXCEED HOME（エクシードホーム）</option>
+            <option value="besto_haus">BESTO HAUS（ベストハウス）</option>
+            <option value="unsure">まだわからない</option>
+          </select>
+
+          <label for="contactPreference">ご案内方法<span class="hint" style="font-weight:400">（任意）</span></label>
+          <select id="contactPreference">
+            <option value="">選択してください</option>
+            <option value="phone">電話で話を聞きたい</option>
+            <option value="email">メールで情報を受け取りたい</option>
+            <option value="mail">資料を郵送してほしい</option>
+            <option value="none">今は案内を希望しない</option>
+          </select>
+        </div>
+      </div>
+
       <label class="req">来場時間帯を選んでください</label>
       <div class="chips" id="chips"></div>
 
@@ -163,7 +204,7 @@
 
   const FORM_TYPES = {
     owner: { label: "オーナー様", note: "オーナー様として受付します。ご来場人数をご入力ください。" },
-    general: { label: "一般", note: "一般のお客様として受付します。ご来場人数をご入力ください。" },
+    general: { label: "一般", note: "一般のお客様として受付します。ご来場人数と、かんたんなアンケートをご入力ください。" },
     vendor: { label: "業者", note: "業者様として受付します。会社・店舗名とご担当・出店名をご入力ください。" },
   };
   const requestedType = new URLSearchParams(location.search).get("type");
@@ -179,8 +220,10 @@
       card.setAttribute("aria-pressed", selected);
     });
     const isVendor = type === "vendor";
+    const isGeneral = type === "general";
     $("vendorFields").hidden = !isVendor;
     $("visitorFields").hidden = isVendor;
+    $("generalSurvey").hidden = !isGeneral;
     $("typeNote").textContent = FORM_TYPES[type].note;
     $("formTypePicker").hidden = true;
     $("formHeading").textContent = FORM_TYPES[type].label + "用受付フォーム";
@@ -192,6 +235,16 @@
     selectFormType(button.dataset.type);
   });
   selectFormType(selectedType);
+
+  $("homeInterest").addEventListener("change", () => {
+    const interested = $("homeInterest").value === "interested";
+    $("followUpQuestions").hidden = !interested;
+    if (!interested) {
+      $("homeStage").value = "";
+      $("brandAwareness").value = "";
+      $("contactPreference").value = "";
+    }
+  });
 
   // 時間帯チップ
   let selectedSlot = "";
@@ -219,6 +272,10 @@
       slot: selectedSlot,
       partySize: $("partySize").value,
       company: $("company").value.trim(), booth: $("booth").value.trim(),
+      homeInterest: $("homeInterest").value,
+      homeStage: $("homeStage").value,
+      brandAwareness: $("brandAwareness").value,
+      contactPreference: $("contactPreference").value,
     };
     if (!data.name) return showErr("お名前を入力してください。");
     if (!data.tel) return showErr("電話番号を入力してください。");
@@ -226,7 +283,15 @@
     if (data.registrationType !== "vendor" && !data.partySize) return showErr("ご来場人数を選択してください。");
     if (data.registrationType === "vendor" && !data.company) return showErr("会社・店舗名を入力してください。");
     if (data.registrationType === "vendor" && !data.booth) return showErr("ご担当・出店名を入力してください。");
+    if (data.registrationType === "general" && !data.homeInterest) return showErr("住まいづくりへのご興味を選択してください。");
+    if (data.registrationType === "general" && data.homeInterest === "interested" && !data.homeStage) return showErr("現在のご状況を選択してください。");
+    if (data.registrationType === "general" && data.homeInterest === "interested" && !data.brandAwareness) return showErr("興味のあるブランドを選択してください。");
     if (!data.slot) return showErr("来場時間帯を選択してください。");
+
+    data.followUpEligible = data.registrationType === "general"
+      && data.homeInterest === "interested"
+      && data.homeStage === "considering"
+      && data.contactPreference !== "none";
 
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信中…";
     try {
