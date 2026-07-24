@@ -92,8 +92,13 @@
         <label class="req" for="homeInterest">住まいづくりに興味はありますか？</label>
         <select id="homeInterest">
           <option value="">選択してください</option>
+ codex-o7oaiu
           <option value="interested">興味あり</option>
           <option value="not_interested">興味なし</option>
+
+          <option value="interested">興味がある</option>
+          <option value="not_interested">今回は興味がない</option>
+ main
         </select>
 
         <div id="followUpQuestions" hidden>
@@ -110,7 +115,10 @@
             <option value="">選択してください</option>
             <option value="exceed_home">EXCEED HOME（エクシードホーム）</option>
             <option value="besto_haus">BESTO HAUS（ベストハウス）</option>
+ codex-o7oaiu
             <option value="pg_house_yamagata">PG HOUSE 山形</option>
+
+ main
             <option value="unsure">まだわからない</option>
           </select>
 
@@ -122,11 +130,14 @@
             <option value="mail">資料を郵送してほしい</option>
             <option value="none">今は案内を希望しない</option>
           </select>
+ codex-o7oaiu
 
           <div id="mailingAddressFields" hidden>
             <label class="req" for="address">資料送付先のご住所</label>
             <input id="address" autocomplete="street-address" placeholder="○○市○○町1-2-3" />
           </div>
+
+ main
         </div>
       </div>
 
@@ -246,6 +257,7 @@
       $("homeStage").value = "";
       $("brandAwareness").value = "";
       $("contactPreference").value = "";
+ codex-o7oaiu
       $("address").value = "";
       $("mailingAddressFields").hidden = true;
     }
@@ -257,6 +269,10 @@
     if (!wantsMail) $("address").value = "";
   });
 
+
+    }
+  });
+ main
   // 時間帯チップ
   let selectedSlot = "";
   const chipWrap = $("chips");
@@ -297,13 +313,21 @@
     if (data.registrationType === "general" && !data.homeInterest) return showErr("住まいづくりへのご興味を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.homeStage) return showErr("現在のご状況を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.brandAwareness) return showErr("興味のあるブランドを選択してください。");
+ codex-o7oaiu
     if (data.registrationType === "general" && data.contactPreference === "mail" && !data.address) return showErr("資料送付先のご住所を入力してください。");
+
+ main
     if (!data.slot) return showErr("来場時間帯を選択してください。");
 
     data.followUpEligible = data.registrationType === "general"
       && data.homeInterest === "interested"
+ codex-o7oaiu
       && data.homeStage !== "already_built";
     data.followUpStatus = data.followUpEligible ? "valid" : "invalid";
+
+      && data.homeStage === "considering"
+      && data.contactPreference !== "none";
+ main
 
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信中…";
     try {
