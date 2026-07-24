@@ -2,26 +2,13 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>受付フォーム | Life Style Market 2026</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>来場予約 | Life Style Market 2026</title>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
 <div class="awning"></div>
 <div class="valance"></div>
-codex-fs87s3
-<main class="wrap">
-  <section class="card removed-page" aria-labelledby="removed-title">
-    <h1 id="removed-title">この受付フォームは削除されました</h1>
-    <p>受付は種別ごとの専用フォームからお願いいたします。</p>
-    <nav aria-label="受付フォーム">
-      <a class="btn btn-ghost" href="general.html">一般者用受付フォーム</a>
-      <a class="btn btn-ghost" href="owner.html">オーナー様用受付フォーム</a>
-      <a class="btn btn-ghost" href="vendor.html">業者用受付フォーム</a>
-    </nav>
-  </section>
-</main>
-
 
 <div class="wrap">
   <!-- ===== 予約フォーム ===== -->
@@ -105,13 +92,8 @@ codex-fs87s3
         <label class="req" for="homeInterest">住まいづくりに興味はありますか？</label>
         <select id="homeInterest">
           <option value="">選択してください</option>
- codex-o7oaiu
           <option value="interested">興味あり</option>
           <option value="not_interested">興味なし</option>
-
-          <option value="interested">興味がある</option>
-          <option value="not_interested">今回は興味がない</option>
- main
         </select>
 
         <div id="followUpQuestions" hidden>
@@ -128,10 +110,7 @@ codex-fs87s3
             <option value="">選択してください</option>
             <option value="exceed_home">EXCEED HOME（エクシードホーム）</option>
             <option value="besto_haus">BESTO HAUS（ベストハウス）</option>
- codex-o7oaiu
             <option value="pg_house_yamagata">PG HOUSE 山形</option>
-
- main
             <option value="unsure">まだわからない</option>
           </select>
 
@@ -143,14 +122,11 @@ codex-fs87s3
             <option value="mail">資料を郵送してほしい</option>
             <option value="none">今は案内を希望しない</option>
           </select>
- codex-o7oaiu
 
           <div id="mailingAddressFields" hidden>
             <label class="req" for="address">資料送付先のご住所</label>
             <input id="address" autocomplete="street-address" placeholder="○○市○○町1-2-3" />
           </div>
-
- main
         </div>
       </div>
 
@@ -270,7 +246,6 @@ codex-fs87s3
       $("homeStage").value = "";
       $("brandAwareness").value = "";
       $("contactPreference").value = "";
- codex-o7oaiu
       $("address").value = "";
       $("mailingAddressFields").hidden = true;
     }
@@ -282,10 +257,6 @@ codex-fs87s3
     if (!wantsMail) $("address").value = "";
   });
 
-
-    }
-  });
- main
   // 時間帯チップ
   let selectedSlot = "";
   const chipWrap = $("chips");
@@ -326,21 +297,13 @@ codex-fs87s3
     if (data.registrationType === "general" && !data.homeInterest) return showErr("住まいづくりへのご興味を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.homeStage) return showErr("現在のご状況を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.brandAwareness) return showErr("興味のあるブランドを選択してください。");
- codex-o7oaiu
     if (data.registrationType === "general" && data.contactPreference === "mail" && !data.address) return showErr("資料送付先のご住所を入力してください。");
-
- main
     if (!data.slot) return showErr("来場時間帯を選択してください。");
 
     data.followUpEligible = data.registrationType === "general"
       && data.homeInterest === "interested"
- codex-o7oaiu
       && data.homeStage !== "already_built";
     data.followUpStatus = data.followUpEligible ? "valid" : "invalid";
-
-      && data.homeStage === "considering"
-      && data.contactPreference !== "none";
- main
 
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信中…";
     try {
@@ -379,6 +342,5 @@ codex-fs87s3
     window.scrollTo(0,0);
   }
 </script>
-main
 </body>
 </html>

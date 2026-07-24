@@ -1,6 +1,5 @@
 # Life Style Market 2026 — 予約＆受付システム
 
-- 受付フォーム（一般用）: `index.html`
 - オーナー様用受付フォーム: `owner.html`
 - 一般用受付フォーム: `general.html`
 - 業者用受付フォーム: `vendor.html`
@@ -37,7 +36,7 @@ GitHub で `marche_project`（Public）を作成し、後述の手順で push。
 git clone https://github.com/<あなた>/marche_project.git
 cd marche_project
 
-# 2) この一式をリポジトリ直下にコピー（index.html / firebase-config.js は上書き）
+# 2) この一式をリポジトリ直下にコピー（registration.html / firebase-config.js は上書き）
 
 # 3) firebase-config.js の apiKey と appId を実値に置換
 #    Firebaseコンソール → プロジェクトの設定 → マイアプリ → ウェブアプリ
@@ -66,7 +65,7 @@ Source: **Deploy from a branch** → Branch: **main** / **/(root)** → Save。
 
 ### 公開URL
 ```
-https://exg-sec-create.github.io/marche_project/            ← 受付フォーム
+https://exg-sec-create.github.io/marche_project/            ← 削除済み（専用フォームをご利用ください）
 https://exg-sec-create.github.io/marche_project/owner.html  ← オーナー様用
 https://exg-sec-create.github.io/marche_project/general.html ← 一般用
 https://exg-sec-create.github.io/marche_project/vendor.html ← 業者用
@@ -85,4 +84,4 @@ https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 ## 補足
 - 500組でも安定: 静的配信（Pages CDN）＋ Firestore（自動スケール）。会場Wi-Fi不安定時もオフライン永続化＋起動時プリロードで継続。
 - 無料枠: 予約500＋受付500で書込約1,000・読取数千。Firebase無料枠（書込2万/日・読取5万/日）に収まります。
-- 公式ロゴPNG差し替え: リポジトリに置き、`index.html` の `<svg class="tent">` と `<h1 class="wordmark">` を `<img src="logo.png">` に置換。
+- 公式ロゴPNG差し替え: リポジトリに置き、`registration.html` の `<svg class="tent">` と `<h1 class="wordmark">` を `<img src="logo.png">` に置換。

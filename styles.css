@@ -189,3 +189,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 
 .pagefoot { text-align:center; color:var(--blue); font-weight:700; margin-top:28px; font-size:.95rem; }
 :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
+
+/* 受付種別を選ぶための旧トップページ */
+.removed-page { max-width: 520px; margin: 52px auto; text-align: center; }
+.removed-page h1 { color: var(--blue); font-size: 1.4rem; }
+.removed-page nav { display: grid; gap: 10px; margin-top: 24px; }
+.removed-page .btn { margin-top: 0; }
