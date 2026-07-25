@@ -40,7 +40,7 @@
         '<div class="evt">'+(E.name||"")+' '+(E.year||"")+'</div>' +
         '<div class="name">'+esc(d.name)+' 様</div>' +
         '<span class="slot">'+typeLabel+'受付</span>' +
-        '<span class="slot">来場 '+esc(d.slot)+'</span>' +
+        '<span class="slot">'+(d.slot ? '来場 '+esc(d.slot) : '時間指定なし')+'</span>' +
         '<div class="qrbox" id="qr"></div>' +
         '<div class="hint">'+(E.dateLabel||"")+' '+(E.dow||"")+' ・ '+(E.timeLabel||"")+'</div>' +
         (d.checkedIn ? '<div class="hint" style="color:var(--green);font-weight:800">✓ 受付済みです</div>' : '') +

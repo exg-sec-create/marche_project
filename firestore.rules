@@ -5,7 +5,7 @@ service cloud.firestore {
       allow create: if isValidNew();
       allow get:    if true;                    // チケット表示・受付照合（単一取得）
       allow list:   if isStaff();               // 一覧はスタッフのみ
-      allow update: if isStaff() && onlyCheckin();
+      allow update: if isStaff();               // 運営画面から登録内容・メモを編集
       allow delete: if isStaff();
     }
     function isStaff() { return request.auth != null; }
@@ -17,10 +17,6 @@ service cloud.firestore {
           && d.slot is string && d.slot.size() <= 40
           && d.registrationType in ['owner', 'general', 'vendor']
           && d.checkedIn == false && d.checkedInAt == null;
-    }
-    function onlyCheckin() {
-      return request.resource.data.diff(resource.data)
-               .affectedKeys().hasOnly(['checkedIn','checkedInAt','checkedInBy']);
     }
   }
 }
