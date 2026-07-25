@@ -132,7 +132,30 @@
   async function setCheck(id, checkedIn) { await db.collection("registrations").doc(id).update({ checkedIn, checkedInAt: checkedIn ? firebase.firestore.FieldValue.serverTimestamp() : null, checkedInBy: checkedIn ? auth.currentUser?.email : null }); }
   function openEditor(id) { const record = all.find(item => item.id === id); if (!record) return; editingId = id; const fields = { editType:"registrationType", editName:"name", editTel:"tel", editEmail:"email", editPartySize:"partySize", editSlot:"slot", editOwnerBrand:"ownerBrand", editCompany:"company", editBooth:"booth", editHomeInterest:"homeInterest", editHomeStage:"homeStage", editBrandAwareness:"brandAwareness", editContactPreference:"contactPreference", editAddress:"address", editRemarks:"remarks", editAdminMemo:"adminMemo" }; Object.entries(fields).forEach(([field, key]) => $(field).value = record[key] || ""); $("editErr").style.display = "none"; $("editDialog").showModal(); }
   $("editCancel").onclick = () => $("editDialog").close();
-  $("editForm").onsubmit = async event => { event.preventDefault(); if (!editingId) return; const name = $("editName").value.trim(); if (!name) { $("editErr").textContent = "代表者様のお名前を入力してください。"; $("editErr").style.display = "block"; return; } const registrationType = $("editType").value; const homeInterest = $("editHomeInterest").value; const homeStage = $("editHomeStage").value; const followUpEligible = registrationType === "general" && homeInterest === "interested" && homeStage !== "already_built"; const save = $("editSave"); save.disabled = true; try { await db.collection("registrations").doc(editingId).update({ registrationType, name, tel:$("editTel").value.trim(), email:$("editEmail").value.trim(), partySize:$("editPartySize").value.trim(), slot:$("editSlot").value, ownerBrand:$("editOwnerBrand").value, company:$("editCompany").value.trim(), booth:$("editBooth").value.trim(), homeInterest, homeStage, brandAwareness:$("editBrandAwareness").value, contactPreference:$("editContactPreference").value, address:$("editAddress").value.trim(), remarks:$("editRemarks").value.trim(), adminMemo:$("editAdminMemo").value.trim(), followUpEligible, followUpStatus:followUpEligible ? "valid" : "invalid", updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser?.email || "" }); $("editDialog").close(); } catch (error) { console.error(error); $("editErr").textContent = "保存に失敗しました。通信環境をご確認ください。"; $("editErr").style.display = "block"; } finally { save.disabled = false; } };
+  $("editForm").onsubmit = async event => {
+    event.preventDefault();
+    if (!editingId) return;
+    const name = $("editName").value.trim();
+    if (!name) { $("editErr").textContent = "代表者様のお名前を入力してください。"; $("editErr").style.display = "block"; return; }
+    const registrationType = $("editType").value;
+    const homeInterest = $("editHomeInterest").value;
+    const homeStage = $("editHomeStage").value;
+    const followUpEligible = registrationType === "general" && homeInterest === "interested" && homeStage !== "already_built";
+    const save = $("editSave");
+    save.disabled = true;
+    $("editErr").style.display = "none";
+    try {
+      await db.collection("registrations").doc(editingId).update({ registrationType, name, tel:$("editTel").value.trim(), email:$("editEmail").value.trim(), partySize:$("editPartySize").value.trim(), slot:$("editSlot").value, ownerBrand:$("editOwnerBrand").value, company:$("editCompany").value.trim(), booth:$("editBooth").value.trim(), homeInterest, homeStage, brandAwareness:$("editBrandAwareness").value, contactPreference:$("editContactPreference").value, address:$("editAddress").value.trim(), remarks:$("editRemarks").value.trim(), adminMemo:$("editAdminMemo").value.trim(), followUpEligible, followUpStatus:followUpEligible ? "valid" : "invalid", updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser.email });
+      editingId = null;
+      $("editDialog").close();
+    } catch (error) {
+      console.error("Registration update failed", error);
+      $("editErr").textContent = error.code === "permission-denied"
+        ? "保存権限がありません。Firestore セキュリティルールが最新か、ログイン中のアカウントをご確認ください。"
+        : "保存に失敗しました。通信環境をご確認のうえ、もう一度お試しください。";
+      $("editErr").style.display = "block";
+    } finally { save.disabled = false; }
+  };
   $("csv").onclick = () => { const head = ["受付種別", "代表者様", "建築ブランド", "時間帯", "電話", "メール", "資料送付先住所", "備考", "運営メモ", "来場人数", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "受付", "受付時刻"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, record.email, record.address, record.remarks, record.adminMemo, record.partySize, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
   function fmt(date) { return date.toLocaleString("ja-JP", { month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit" }); }
   function typeLabel(type) { return ({ owner:"オーナー様", general:"一般", vendor:"業者" })[type] || "一般"; }

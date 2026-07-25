@@ -81,6 +81,16 @@ https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 - 時間帯・定員: `TIME_SLOTS` / `SLOT_CAPACITY`。
 - 受付ページの修正: `checkin.html` を直接編集して push。QRが読めない時の名前検索→手動受付／取消も実装済み。
 
+## 運営ダッシュボードで登録内容を保存できない場合
+登録内容の編集には、リポジトリ内の `firestore.rules` を Firebase に反映する必要があります。
+GitHub Pages への push だけではセキュリティルールは更新されないため、ルール変更後は次のコマンドも実行してください。
+
+```bash
+npx firebase-tools deploy --only firestore:rules --project marche2026-86ab6
+```
+
+`Missing or insufficient permissions` と表示される場合は、先に Firebase CLI へログインし、上記コマンドで最新ルールを反映してください。
+
 ## 補足
 - 500組でも安定: 静的配信（Pages CDN）＋ Firestore（自動スケール）。会場Wi-Fi不安定時もオフライン永続化＋起動時プリロードで継続。
 - 無料枠: 予約500＋受付500で書込約1,000・読取数千。Firebase無料枠（書込2万/日・読取5万/日）に収まります。
