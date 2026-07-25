@@ -144,8 +144,15 @@
     const save = $("editSave");
     save.disabled = true;
     $("editErr").style.display = "none";
+    const updatedFields = { registrationType, name, tel:$("editTel").value.trim(), email:$("editEmail").value.trim(), partySize:$("editPartySize").value.trim(), slot:$("editSlot").value, ownerBrand:$("editOwnerBrand").value, company:$("editCompany").value.trim(), booth:$("editBooth").value.trim(), homeInterest, homeStage, brandAwareness:$("editBrandAwareness").value, contactPreference:$("editContactPreference").value, address:$("editAddress").value.trim(), remarks:$("editRemarks").value.trim(), adminMemo:$("editAdminMemo").value.trim(), followUpEligible, followUpStatus:followUpEligible ? "valid" : "invalid" };
     try {
-      await db.collection("registrations").doc(editingId).update({ registrationType, name, tel:$("editTel").value.trim(), email:$("editEmail").value.trim(), partySize:$("editPartySize").value.trim(), slot:$("editSlot").value, ownerBrand:$("editOwnerBrand").value, company:$("editCompany").value.trim(), booth:$("editBooth").value.trim(), homeInterest, homeStage, brandAwareness:$("editBrandAwareness").value, contactPreference:$("editContactPreference").value, address:$("editAddress").value.trim(), remarks:$("editRemarks").value.trim(), adminMemo:$("editAdminMemo").value.trim(), followUpEligible, followUpStatus:followUpEligible ? "valid" : "invalid", updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser.email });
+      const savedId = editingId;
+      await db.collection("registrations").doc(savedId).update({ ...updatedFields, updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:auth.currentUser.email });
+      // onSnapshot の再通知を待たず、保存完了した内容を集計・一覧へ確実に反映する。
+      // Firestore からの次の通知時には、サーバー上の最新データで再同期される。
+      const savedRecord = all.find(item => item.id === savedId);
+      if (savedRecord) Object.assign(savedRecord, updatedFields);
+      render();
       editingId = null;
       $("editDialog").close();
     } catch (error) {
