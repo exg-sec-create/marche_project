@@ -3,20 +3,30 @@ service cloud.firestore {
   match /databases/{database}/documents {
     match /registrations/{id} {
       allow create: if isValidNew();
-      allow get:    if true;                    // チケット表示・受付照合（単一取得）
-      allow list:   if isStaff();               // 一覧はスタッフのみ
-      allow update: if isStaff();               // 運営画面から登録内容・メモを編集
+      allow get:    if true;
+      allow list:   if isStaff();
+      allow update: if isStaff();
       allow delete: if isStaff();
     }
-    function isStaff() { return request.auth != null; }
+
+    function isStaff() {
+      return request.auth != null;
+    }
+
     function isValidNew() {
       let d = request.resource.data;
-      return d.name is string && d.name.size() > 0 && d.name.size() <= 100
-          && d.email is string && d.email.size() <= 200
-          && d.tel is string && d.tel.size() <= 40
-          && d.slot is string && d.slot.size() <= 40
+      return d.name is string
+          && d.name.size() > 0
+          && d.name.size() <= 100
+          && d.email is string
+          && d.email.size() <= 200
+          && d.tel is string
+          && d.tel.size() <= 40
+          && d.slot is string
+          && d.slot.size() <= 40
           && d.registrationType in ['owner', 'general', 'vendor']
-          && d.checkedIn == false && d.checkedInAt == null;
+          && d.checkedIn == false
+          && d.checkedInAt == null;
     }
   }
 }
