@@ -31,6 +31,13 @@
     text-align:center; padding:24px; z-index:50; }
   #ov .ic { font-size:4.5rem; line-height:1; } #ov .bg { font-size:2.4rem; font-weight:800; margin:10px 0 4px; }
   #ov .sm { font-size:1.1rem; opacity:.92; }
+  #ovType { min-width:210px; margin:0 0 8px; padding:10px 24px; border:3px solid #fff; border-radius:999px;
+    color:#fff; font-size:1.45rem; font-weight:800; box-shadow:0 5px 16px rgba(0,0,0,.22); }
+  #ovType.type-owner { background:#1a5fa8; } #ovType.type-general { background:#e87920; }
+  #ovType.type-vendor { background:#3f8f42; } #ovType.type-unknown { background:#59645f; }
+  #ovOk { min-width:180px; margin-top:28px; padding:13px 28px; border:2px solid #fff; border-radius:12px;
+    background:#fff; color:#18251f; font:inherit; font-size:1.05rem; font-weight:800; cursor:pointer;
+    box-shadow:0 4px 12px rgba(0,0,0,.2); }
   .ok{background:#16a34a} .already{background:#d97706} .bad{background:#dc2626}
 </style>
 </head>
@@ -62,7 +69,10 @@
 </div>
 
 <!-- フィードバック -->
-<div id="ov"><div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div><div class="sm" id="ovMsg"></div></div>
+<div id="ov" role="dialog" aria-modal="true" aria-live="assertive">
+  <div id="ovType"></div><div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div>
+  <div class="sm" id="ovMsg"></div><button type="button" id="ovOk">OK（次の読み取りへ）</button>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -74,7 +84,7 @@
   const auth = firebase.auth(), db = firebase.firestore();
   db.enablePersistence({ synchronizeTabs:true }).catch(()=>{}); // 会場Wi-Fi対策
   const $ = id => document.getElementById(id);
-  let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[];
+  let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[], feedbackTimer=null;
 
   $("loginBtn").onclick = async () => {
     $("loginErr").style.display="none";
@@ -115,7 +125,8 @@
     lastCode=text; lastTime=now; busy=true;
     const id = extractId(text);
     show(await checkIn(id)); await refresh();
-    setTimeout(()=>{ $("ov").style.display="none"; busy=false; }, 1600);
+    // 見落としを防ぐため長めに表示。スタッフはOKボタンですぐ次の受付へ進めます。
+    feedbackTimer = setTimeout(hideFeedback, 6000);
   }
   function extractId(t){ try{ const u=new URL(t); const q=u.searchParams.get("id"); if(q) return q; }catch(_){} return t.trim(); }
 
@@ -124,10 +135,10 @@
     let snap; try { snap = await ref.get(); } catch(e){ return {status:"error"}; }
     if (!snap.exists) return {status:"notfound"};
     const d = snap.data();
-    if (d.checkedIn) return {status:"already", name:d.name, slot:d.slot};
+    if (d.checkedIn) return {status:"already", name:d.name, slot:d.slot, registrationType:d.registrationType};
     try { await ref.update({ checkedIn:true, checkedInAt:firebase.firestore.FieldValue.serverTimestamp(), checkedInBy:user.email }); }
     catch(e){ return {status:"error"}; }
-    return {status:"ok", name:d.name, slot:d.slot};
+    return {status:"ok", name:d.name, slot:d.slot, registrationType:d.registrationType};
   }
 
   // --- 手動受付・修正 ---
@@ -157,14 +168,27 @@
   }
 
   // --- フィードバック ---
+  const TYPE_INFO = {
+    owner: { label:"オーナー様", className:"type-owner" },
+    general: { label:"一般", className:"type-general" },
+    vendor: { label:"業者", className:"type-vendor" }
+  };
   function show(r){
     const ov=$("ov"); ov.className="";
     if (r.status==="ok"){ ov.classList.add("ok"); $("ovIc").textContent="✓"; $("ovName").textContent=r.name+" 様"; $("ovMsg").textContent="受付完了 ・ "+(r.slot||""); beep(880); vib([120]); }
     else if (r.status==="already"){ ov.classList.add("already"); $("ovIc").textContent="!"; $("ovName").textContent=r.name+" 様"; $("ovMsg").textContent="すでに受付済みです"; beep(440); vib([80,60,80]); }
     else if (r.status==="notfound"){ ov.classList.add("bad"); $("ovIc").textContent="×"; $("ovName").textContent="未登録のQR"; $("ovMsg").textContent="予約が見つかりません"; beep(220); vib([200]); }
     else { ov.classList.add("bad"); $("ovIc").textContent="×"; $("ovName").textContent="エラー"; $("ovMsg").textContent="通信状態をご確認ください"; beep(220); vib([200]); }
+    const type = TYPE_INFO[r.registrationType] || { label:"種別未設定", className:"type-unknown" };
+    $("ovType").textContent=type.label; $("ovType").className=type.className;
     ov.style.display="flex";
+    $("ovOk").focus();
   }
+  function hideFeedback(){
+    clearTimeout(feedbackTimer); feedbackTimer=null;
+    $("ov").style.display="none"; busy=false;
+  }
+  $("ovOk").onclick=hideFeedback;
   function beep(f){ if(!audioCtx) return; try{ const o=audioCtx.createOscillator(),g=audioCtx.createGain();
     o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(.15,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.25);
