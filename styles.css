@@ -179,13 +179,14 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 /* 受付種別ごとのQRチケット表示色 */
 .ticket-owner { --ticket-color: var(--blue); --ticket-soft: #eaf4fd; }
 .ticket-general { --ticket-color: #e87920; --ticket-soft: #fff1e5; }
+.ticket-referral { --ticket-color: #8b4bb5; --ticket-soft: #f5eafa; }
 .ticket-vendor { --ticket-color: #3f8f42; --ticket-soft: #edf8ed; }
-.ticket-owner, .ticket-general, .ticket-vendor { border-color: var(--ticket-color); }
-.ticket-owner .top, .ticket-general .top, .ticket-vendor .top {
+.ticket-owner, .ticket-general, .ticket-referral, .ticket-vendor { border-color: var(--ticket-color); }
+.ticket-owner .top, .ticket-general .top, .ticket-referral .top, .ticket-vendor .top {
   background: repeating-linear-gradient(90deg, var(--ticket-color) 0 var(--stripe), #fff var(--stripe) calc(var(--stripe) * 2));
 }
-.ticket-owner .evt, .ticket-general .evt, .ticket-vendor .evt { color: var(--ticket-color); }
-.ticket-owner .slot, .ticket-general .slot, .ticket-vendor .slot { background: var(--ticket-soft); color: var(--ticket-color); }
+.ticket-owner .evt, .ticket-general .evt, .ticket-referral .evt, .ticket-vendor .evt { color: var(--ticket-color); }
+.ticket-owner .slot, .ticket-general .slot, .ticket-referral .slot, .ticket-vendor .slot { background: var(--ticket-soft); color: var(--ticket-color); }
 
 .pagefoot { text-align:center; color:var(--blue); font-weight:700; margin-top:28px; font-size:.95rem; }
 :focus-visible { outline: 3px solid var(--yellow); outline-offset: 2px; }
