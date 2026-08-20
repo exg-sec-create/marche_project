@@ -34,6 +34,7 @@
   #ovType { min-width:210px; margin:0 0 8px; padding:10px 24px; border:3px solid #fff; border-radius:999px;
     color:#fff; font-size:1.45rem; font-weight:800; box-shadow:0 5px 16px rgba(0,0,0,.22); }
   #ovType.type-owner { background:#1a5fa8; } #ovType.type-general { background:#e87920; }
+  #ovType.type-referral { background:#8b4bb5; }
   #ovType.type-vendor { background:#3f8f42; } #ovType.type-unknown { background:#59645f; }
   #ovOk { min-width:180px; margin-top:28px; padding:13px 28px; border:2px solid #fff; border-radius:12px;
     background:#fff; color:#18251f; font:inherit; font-size:1.05rem; font-weight:800; cursor:pointer;
@@ -171,6 +172,7 @@
   const TYPE_INFO = {
     owner: { label:"オーナー様", className:"type-owner" },
     general: { label:"一般", className:"type-general" },
+    referral: { label:"紹介", className:"type-referral" },
     vendor: { label:"業者", className:"type-vendor" }
   };
   function show(r){

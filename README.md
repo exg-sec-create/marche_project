@@ -2,6 +2,7 @@
 
 - オーナー様用受付フォーム: `owner.html`
 - 一般用受付フォーム: `general.html`
+- OB様紹介のお客様用・当日受付フォーム: `referral.html`
 - 業者用受付フォーム: `vendor.html`
 - QRチケット再表示: `ticket.html`
 - 受付スキャナー（スタッフ）: `checkin.html`
@@ -68,6 +69,7 @@ Source: **Deploy from a branch** → Branch: **main** / **/(root)** → Save。
 https://exg-sec-create.github.io/marche_project/            ← 削除済み（専用フォームをご利用ください）
 https://exg-sec-create.github.io/marche_project/owner.html  ← オーナー様用
 https://exg-sec-create.github.io/marche_project/general.html ← 一般用
+https://exg-sec-create.github.io/marche_project/referral.html ← OB様紹介のお客様用（当日登録）
 https://exg-sec-create.github.io/marche_project/vendor.html ← 業者用
 https://exg-sec-create.github.io/marche_project/checkin.html ← 受付（スタッフ）
 https://exg-sec-create.github.io/marche_project/admin.html   ← 運営

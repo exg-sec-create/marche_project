@@ -24,7 +24,7 @@ service cloud.firestore {
           && d.tel.size() <= 40
           && d.slot is string
           && d.slot.size() <= 40
-          && d.registrationType in ['owner', 'general', 'vendor']
+          && d.registrationType in ['owner', 'general', 'referral', 'vendor']
           && d.checkedIn == false
           && d.checkedInAt == null;
     }

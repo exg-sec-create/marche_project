@@ -48,6 +48,7 @@
         <div class="type-grid" id="formTypes">
           <button type="button" class="type-card sel" data-type="owner" aria-pressed="true"><span class="type-icon">🏠</span><span><b>オーナー様用</b><small>お住まいのオーナー様</small></span></button>
           <button type="button" class="type-card" data-type="general" aria-pressed="false"><span class="type-icon">🎪</span><span><b>一般用</b><small>ご来場のお客様</small></span></button>
+          <button type="button" class="type-card" data-type="referral" aria-pressed="false"><span class="type-icon">🤝</span><span><b>紹介用</b><small>OB様からご紹介のお客様</small></span></button>
           <button type="button" class="type-card" data-type="vendor" aria-pressed="false"><span class="type-icon">🏪</span><span><b>業者用</b><small>出店・お取引先様</small></span></button>
         </div>
       </fieldset>
@@ -60,6 +61,11 @@
 
         <label class="req" for="booth">ご担当・出店名</label>
         <input id="booth" placeholder="ご担当者名 または 出店名" />
+      </div>
+
+      <div id="referralFields" hidden>
+        <label class="req" for="referrerName">ご紹介者（OB様）のお名前</label>
+        <input id="referrerName" autocomplete="off" placeholder="紹介者様のお名前" />
       </div>
 
       <label class="req" for="name">代表者様のお名前</label>
@@ -221,6 +227,7 @@
   const FORM_TYPES = {
     owner: { label: "オーナー様", note: "オーナー様として受付します。ご来場人数をご入力ください。" },
     general: { label: "一般", note: "一般のお客様として受付します。ご来場人数と、かんたんなアンケートをご入力ください。" },
+    referral: { label: "紹介", note: "OB様からご紹介のお客様専用の当日受付です。ご紹介者様とご来場人数をご入力ください。" },
     vendor: { label: "業者", note: "業者様として受付します。会社・店舗名とご担当・出店名をご入力ください。" },
   };
   const requestedType = new URLSearchParams(location.search).get("type");
@@ -238,9 +245,11 @@
     const isVendor = type === "vendor";
     const isGeneral = type === "general";
     const isOwner = type === "owner";
+    const isReferral = type === "referral";
     $("vendorFields").hidden = !isVendor;
     $("visitorFields").hidden = isVendor;
     $("ownerFields").hidden = !isOwner;
+    $("referralFields").hidden = !isReferral;
     $("generalSurvey").hidden = !isGeneral;
     $("slotFields").hidden = !isOwner;
     $("typeNote").textContent = FORM_TYPES[type].note;
@@ -299,6 +308,7 @@
       slot: selectedSlot,
       partySize: $("partySize").value,
       company: $("company").value.trim(), booth: $("booth").value.trim(),
+      referrerName: $("referrerName").value.trim(),
       homeInterest: $("homeInterest").value,
       homeStage: $("homeStage").value,
       brandAwareness: $("brandAwareness").value,
@@ -312,6 +322,7 @@
     if (data.registrationType === "owner" && !data.ownerBrand) return showErr("建築されたブランドを選択してください。");
     if (data.registrationType === "vendor" && !data.company) return showErr("会社・店舗名を入力してください。");
     if (data.registrationType === "vendor" && !data.booth) return showErr("ご担当・出店名を入力してください。");
+    if (data.registrationType === "referral" && !data.referrerName) return showErr("ご紹介者（OB様）のお名前を入力してください。");
     if (data.registrationType === "general" && !data.homeInterest) return showErr("住まいづくりへのご興味を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.homeStage) return showErr("現在のご状況を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.brandAwareness) return showErr("興味のあるブランドを選択してください。");
