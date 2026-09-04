@@ -40,7 +40,7 @@
     </div>
 
     <div class="section-title"><span id="formHeading">受付フォーム</span></div>
-    <p class="lead">ご入力後に表示されるQRチケットを当日受付でご提示ください🎪</p>
+    <p class="lead" id="formLead">ご入力後に表示されるQRチケットを当日受付でご提示ください🎪</p>
 
     <div class="card">
       <fieldset class="form-types" id="formTypePicker">
@@ -231,9 +231,13 @@
     referral: { label: "紹介", note: "OB様からご紹介のお客様専用の当日受付です。ご紹介者様とご来場人数をご入力ください。" },
     vendor: { label: "業者", note: "業者様として受付します。会社・店舗名とご担当・出店名をご入力ください。" },
   };
-  const requestedType = new URLSearchParams(location.search).get("type");
+  const searchParams = new URLSearchParams(location.search);
+  const requestedType = searchParams.get("type");
   // 専用URLごとに受付種別を固定し、フォーム上では他の種別へ移動できないようにする。
   const fixedType = Object.hasOwn(FORM_TYPES, requestedType) ? requestedType : "general";
+  // オーナー様の当日用URLでは、事前予約だけに必要な来場希望時間を表示しない。
+  const isOwnerOnsite = fixedType === "owner" && searchParams.get("mode") === "onsite";
+  if (isOwnerOnsite) document.title = "オーナー様用・当日受付 | " + (E.name||"") + " " + (E.year||"");
   let selectedType = fixedType;
 
   function selectFormType(type) {
@@ -252,10 +256,15 @@
     $("ownerFields").hidden = !isOwner;
     $("referralFields").hidden = !isReferral;
     $("generalSurvey").hidden = !isGeneral;
-    $("slotFields").hidden = !isOwner;
-    $("typeNote").textContent = FORM_TYPES[type].note;
+    $("slotFields").hidden = !isOwner || isOwnerOnsite;
+    $("typeNote").textContent = isOwnerOnsite
+      ? "オーナー様の当日受付です。ご来場人数をご入力ください。"
+      : FORM_TYPES[type].note;
     $("formTypePicker").hidden = true;
-    $("formHeading").textContent = FORM_TYPES[type].label + "用受付フォーム";
+    $("formHeading").textContent = isOwnerOnsite
+      ? "オーナー様用・当日受付フォーム"
+      : FORM_TYPES[type].label + (isOwner ? "用・事前受付フォーム" : "用受付フォーム");
+    if (isOwnerOnsite) $("formLead").textContent = "必要事項をご入力後、表示されるQRチケットを受付でご提示ください🎪";
   }
 
   $("formTypes").addEventListener("click", event => {
@@ -332,7 +341,7 @@
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.homeStage) return showErr("現在のご状況を選択してください。");
     if (data.registrationType === "general" && data.homeInterest === "interested" && !data.brandAwareness) return showErr("興味のあるブランドを選択してください。");
     if (data.registrationType === "general" && data.contactPreference === "mail" && !data.address) return showErr("資料送付先のご住所を入力してください。");
-    if (data.registrationType === "owner" && !data.slot) return showErr("来場時間帯を選択してください。");
+    if (data.registrationType === "owner" && !isOwnerOnsite && !data.slot) return showErr("来場時間帯を選択してください。");
 
     data.followUpEligible = data.registrationType === "general"
       && data.homeInterest === "interested"
@@ -341,7 +350,7 @@
 
     const btn = $("submit"); btn.disabled = true; btn.textContent = "送信中…";
     try {
-      if (data.registrationType === "owner" && window.SLOT_CAPACITY) {
+      if (data.registrationType === "owner" && !isOwnerOnsite && window.SLOT_CAPACITY) {
         const snap = await db.collection("registrations").where("slot","==",data.slot).get();
         if (snap.size >= window.SLOT_CAPACITY) {
           btn.disabled=false; btn.textContent="🎟️ 受付してQRチケットをGET！";

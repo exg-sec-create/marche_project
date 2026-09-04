@@ -1,6 +1,7 @@
 # Life Style Market 2026 — 予約＆受付システム
 
-- オーナー様用受付フォーム: `owner.html`
+- オーナー様用・事前受付フォーム（来場希望時間あり）: `owner.html`
+- オーナー様用・当日受付フォーム（来場希望時間なし）: `owner-today.html`
 - 一般用受付フォーム: `general.html`
 - OB様紹介のお客様用・当日受付フォーム: `referral.html`
 - 業者用受付フォーム: `vendor.html`
@@ -67,7 +68,8 @@ Source: **Deploy from a branch** → Branch: **main** / **/(root)** → Save。
 ### 公開URL
 ```
 https://exg-sec-create.github.io/marche_project/            ← 削除済み（専用フォームをご利用ください）
-https://exg-sec-create.github.io/marche_project/owner.html  ← オーナー様用
+https://exg-sec-create.github.io/marche_project/owner.html  ← オーナー様用（事前受付・来場希望時間あり）
+https://exg-sec-create.github.io/marche_project/owner-today.html ← オーナー様用（当日受付・来場希望時間なし）
 https://exg-sec-create.github.io/marche_project/general.html ← 一般用
 https://exg-sec-create.github.io/marche_project/referral.html ← OB様紹介のお客様用（当日登録）
 https://exg-sec-create.github.io/marche_project/vendor.html ← 業者用
