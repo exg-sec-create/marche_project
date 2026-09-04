@@ -23,6 +23,8 @@
   .pill.in, .pill.follow-up-valid { background:#e2f5e6; color:#166534; }
   .pill.out { background:#eef1f4; color:#71808a; } .pill.follow-up-invalid { background:#fdecec; color:#a12020; }
   .pill.type-owner { background:#eaf4fd; color:#1a5fa8; } .pill.type-general { background:#fff1e5; color:#c55b0b; } .pill.type-referral { background:#f5eafa; color:#76369d; } .pill.type-vendor { background:#edf8ed; color:#2f7a33; }
+  .strap { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; font-weight:700; }
+  .strap::before { content:""; width:12px; height:12px; border-radius:50%; background:var(--strap-color); border:1px solid #0002; box-shadow:inset 0 0 0 1px #fff5; }
   .act { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; font-size:.8rem; cursor:pointer; font-family:inherit; }
   .actions { display:flex; gap:6px; white-space:nowrap; }
   dialog { width:min(620px,calc(100% - 24px)); max-height:90vh; overflow:auto; border:0; border-radius:16px; padding:22px; box-shadow:0 20px 60px #17324b55; }
@@ -60,7 +62,7 @@
   </div>
   <div class="slotgrid" id="slotGrid"></div>
   <div class="toolbar"><input id="search" placeholder="名前・電話・メールで検索" /><button class="btn" id="csv">CSVを書き出す</button></div>
-  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>判定</th><th>状態</th><th>受付時刻</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>判定</th><th>ネックストラップ</th><th>状態</th><th>受付時刻</th><th></th></tr></thead><tbody id="rows"></tbody></table></div>
 </main>
 
 <dialog id="editDialog">
@@ -127,7 +129,7 @@
     const grid = $("slotGrid"); grid.innerHTML = "";
     (window.TIME_SLOTS || []).forEach(slot => { const records = all.filter(record => record.slot === slot); const checkedIn = records.filter(record => record.checkedIn).length; const card = document.createElement("div"); card.className = "slotcard"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${records.length} ・ 受付 ${checkedIn}</div>`; grid.appendChild(card); });
     const rows = all.filter(record => !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query)));
-    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${followUp}</td><td>${state}</td><td>${checkedInAt}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${checkAction}</div></td></tr>`; }).join("");
+    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${followUp}</td><td>${strapCell}</td><td>${state}</td><td>${checkedInAt}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${checkAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
     $("rows").querySelectorAll("[data-un]").forEach(button => button.onclick = () => setCheck(button.dataset.un, false));
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
@@ -166,7 +168,7 @@
       $("editErr").style.display = "block";
     } finally { save.disabled = false; }
   };
-  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "メール", "資料送付先住所", "備考", "運営メモ", "来場人数", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "受付", "受付時刻"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, record.email, record.address, record.remarks, record.adminMemo, record.partySize, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
+  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "メール", "資料送付先住所", "備考", "運営メモ", "来場人数", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "ネックストラップ", "受付", "受付時刻"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, record.email, record.address, record.remarks, record.adminMemo, record.partySize, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
   function fmt(date) { return date.toLocaleString("ja-JP", { month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit" }); }
   function typeLabel(type) { return ({ owner:"オーナー様", general:"一般", referral:"紹介", vendor:"業者" })[type] || "一般"; }
   function homeInterestLabel(value) { return ({ interested:"興味あり", not_interested:"興味なし" })[value] || ""; }
@@ -176,6 +178,12 @@
   function contactPreferenceLabel(value) { return ({ phone:"電話で話を聞きたい", email:"メールで情報を受け取りたい", mail:"資料を郵送してほしい", none:"今は案内を希望しない" })[value] || ""; }
   function followUpStatus(record) { return record.followUpStatus || (record.homeInterest === "interested" && record.homeStage !== "already_built" ? "valid" : "invalid"); }
   function followUpStatusLabel(record) { return record.registrationType === "general" ? (followUpStatus(record) === "valid" ? "有効客" : "無効客") : ""; }
+  function neckStrapInfo(record) {
+    if (record.registrationType === "owner") return ({ exceed_home:{ label:"オレンジ", color:"#f97316" }, besto_haus:{ label:"青", color:"#2563eb" }, pg_house_yamagata:{ label:"黄色", color:"#facc15" } })[record.ownerBrand] || null;
+    if (record.registrationType === "referral") return { label:"ピンク", color:"#ec4899" };
+    if (record.registrationType === "general") return followUpStatus(record) === "valid" ? { label:"赤", color:"#dc2626" } : { label:"グレー", color:"#6b7280" };
+    return null;
+  }
   function esc(value) { return String(value ?? "").replace(/[&<>"']/g, character => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[character]); }
   function cell(value) { value = String(value ?? ""); return /[",\n]/.test(value) ? '"' + value.replace(/"/g, '""') + '"' : value; }
 </script>
