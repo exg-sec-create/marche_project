@@ -21,7 +21,8 @@ service cloud.firestore {
           && d.email is string
           && d.email.size() <= 200
           && d.tel is string
-          && d.tel.size() <= 40
+          && d.tel.matches('^(070|080|090)[0-9]{8}$')
+          && !d.tel.matches('.*(000000|111111|222222|333333|444444|555555|666666|777777|888888|999999|012345|123456|234567|345678|456789|987654|876543|765432|654321|543210).*')
           && d.slot is string
           && d.slot.size() <= 40
           && d.registrationType in ['owner', 'general', 'referral', 'vendor']
