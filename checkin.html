@@ -36,6 +36,10 @@
   #ovType.type-owner { background:#1a5fa8; } #ovType.type-general { background:#e87920; }
   #ovType.type-referral { background:#8b4bb5; }
   #ovType.type-vendor { background:#3f8f42; } #ovType.type-unknown { background:#59645f; }
+  #ovStrap { display:flex; align-items:center; gap:10px; margin:10px 0 2px; padding:10px 20px; border-radius:12px;
+    background:#fff; color:#18251f; font-size:1.25rem; font-weight:800; box-shadow:0 5px 16px rgba(0,0,0,.22); }
+  #ovStrap::before { content:""; width:24px; height:24px; flex:none; border-radius:50%; background:var(--strap-color);
+    border:1px solid #0002; box-shadow:inset 0 0 0 2px #fff7; }
   #ovOk { min-width:180px; margin-top:28px; padding:13px 28px; border:2px solid #fff; border-radius:12px;
     background:#fff; color:#18251f; font:inherit; font-size:1.05rem; font-weight:800; cursor:pointer;
     box-shadow:0 4px 12px rgba(0,0,0,.2); }
@@ -72,7 +76,7 @@
 <!-- フィードバック -->
 <div id="ov" role="dialog" aria-modal="true" aria-live="assertive">
   <div id="ovType"></div><div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div>
-  <div class="sm" id="ovMsg"></div><button type="button" id="ovOk">OK（次の読み取りへ）</button>
+  <div class="sm" id="ovMsg"></div><div id="ovStrap"></div><button type="button" id="ovOk">OK（次の読み取りへ）</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -136,10 +140,10 @@
     let snap; try { snap = await ref.get(); } catch(e){ return {status:"error"}; }
     if (!snap.exists) return {status:"notfound"};
     const d = snap.data();
-    if (d.checkedIn) return {status:"already", name:d.name, slot:d.slot, registrationType:d.registrationType};
+    if (d.checkedIn) return {status:"already", name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus};
     try { await ref.update({ checkedIn:true, checkedInAt:firebase.firestore.FieldValue.serverTimestamp(), checkedInBy:user.email }); }
     catch(e){ return {status:"error"}; }
-    return {status:"ok", name:d.name, slot:d.slot, registrationType:d.registrationType};
+    return {status:"ok", name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus};
   }
 
   // --- 手動受付・修正 ---
@@ -175,6 +179,13 @@
     referral: { label:"紹介", className:"type-referral" },
     vendor: { label:"業者", className:"type-vendor" }
   };
+  function followUpStatus(r){ return r.followUpStatus || (r.homeInterest === "interested" && r.homeStage !== "already_built" ? "valid" : "invalid"); }
+  function neckStrapInfo(r){
+    if (r.registrationType === "owner") return ({ exceed_home:{ label:"オレンジ", color:"#f97316" }, besto_haus:{ label:"青", color:"#2563eb" }, pg_house_yamagata:{ label:"黄色", color:"#facc15" } })[r.ownerBrand] || null;
+    if (r.registrationType === "referral") return { label:"ピンク", color:"#ec4899" };
+    if (r.registrationType === "general") return followUpStatus(r) === "valid" ? { label:"赤", color:"#dc2626" } : { label:"グレー", color:"#6b7280" };
+    return null;
+  }
   function show(r){
     const ov=$("ov"); ov.className="";
     if (r.status==="ok"){ ov.classList.add("ok"); $("ovIc").textContent="✓"; $("ovName").textContent=r.name+" 様"; $("ovMsg").textContent="受付完了 ・ "+(r.slot||""); beep(880); vib([120]); }
@@ -183,6 +194,9 @@
     else { ov.classList.add("bad"); $("ovIc").textContent="×"; $("ovName").textContent="エラー"; $("ovMsg").textContent="通信状態をご確認ください"; beep(220); vib([200]); }
     const type = TYPE_INFO[r.registrationType] || { label:"種別未設定", className:"type-unknown" };
     $("ovType").textContent=type.label; $("ovType").className=type.className;
+    const strap=neckStrapInfo(r), strapEl=$("ovStrap");
+    strapEl.style.display=strap ? "flex" : "none";
+    if(strap){ strapEl.textContent="ネックストラップ："+strap.label; strapEl.style.setProperty("--strap-color",strap.color); }
     ov.style.display="flex";
     $("ovOk").focus();
   }
