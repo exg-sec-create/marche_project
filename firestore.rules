@@ -5,12 +5,23 @@ service cloud.firestore {
       allow create: if isValidNew();
       allow get:    if true;
       allow list:   if isStaff();
-      allow update: if isStaff();
+      allow update: if isStaff() || isValidEventParticipation();
       allow delete: if isStaff();
     }
 
     function isStaff() {
       return request.auth != null;
+    }
+
+    // チケットURLを持つ来場者は、受付後のイベント参加を一度だけ記録できる。
+    // 既存データには eventParticipated がないため、未設定も未参加として扱う。
+    function isValidEventParticipation() {
+      return resource.data.checkedIn == true
+          && (!("eventParticipated" in resource.data) || resource.data.eventParticipated == false)
+          && request.resource.data.eventParticipated == true
+          && request.resource.data.eventParticipatedAt == request.time
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['eventParticipated', 'eventParticipatedAt']);
     }
 
     function isValidNew() {

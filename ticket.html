@@ -26,15 +26,26 @@
   const E = window.EVENT || {};
   const id = new URLSearchParams(location.search).get("id");
   const box = document.getElementById("box");
+  let participating = false;
 
-  (async () => {
+  (() => {
     if (!id) { box.innerHTML = '<p class="lead">チケットが指定されていません。</p>'; return; }
-    try {
-      const doc = await db.collection("registrations").doc(id).get();
+    db.collection("registrations").doc(id).onSnapshot(doc => {
       if (!doc.exists) { box.innerHTML = '<p class="lead">チケットが見つかりませんでした。</p>'; return; }
-      const d = doc.data();
-      const url = location.href;
-      const typeLabel = ({owner:"オーナー様", general:"一般", vendor:"業者"})[d.registrationType] || "一般";
+      renderTicket(doc.data());
+    }, e => {
+      console.error(e);
+      box.innerHTML = '<p class="lead">読み込みに失敗しました。通信環境をご確認ください。</p>';
+    });
+  })();
+
+  function renderTicket(d) {
+      const typeLabel = ({owner:"オーナー様", general:"一般", referral:"紹介", vendor:"業者"})[d.registrationType] || "一般";
+      const participation = d.eventParticipated
+        ? '<div class="event-participation done"><div class="event-state">✓ イベント参加済み</div><button class="btn event-btn" disabled>参加済み（再参加できません）</button><p class="event-note">※ このイベントには参加済みのため、再参加はできません。</p></div>'
+        : d.checkedIn
+          ? '<div class="event-participation ready"><div class="event-state">🎪 イベント参加</div><button class="btn event-btn" id="participateBtn">イベントに参加する</button><p class="event-note">※ 参加時にスタッフへこの画面を提示し、スタッフがボタンを押してください。ボタンは一度だけ押せます。</p></div>'
+          : '<div class="event-participation locked"><div class="event-state">🔒 イベント参加</div><button class="btn event-btn" disabled>受付後に参加できます</button><p class="event-note">※ 先に受付でQRをご提示ください。受付完了後、このボタンが押せるようになります。</p></div>';
       box.innerHTML =
         '<div class="ticket ticket-'+esc(d.registrationType)+'"><div class="top"></div><div class="body">' +
         '<div class="evt">'+(E.name||"")+' '+(E.year||"")+'</div>' +
@@ -44,16 +55,44 @@
         '<div class="qrbox" id="qr"></div>' +
         '<div class="hint">'+(E.dateLabel||"")+' '+(E.dow||"")+' ・ '+(E.timeLabel||"")+'</div>' +
         (d.checkedIn ? '<div class="hint" style="color:var(--green);font-weight:800">✓ 受付済みです</div>' : '') +
+        participation +
         '</div><div class="perf"><span class="notch l"></span><span class="notch r"></span></div>' +
         '<div class="foot"><div>会場：'+(E.venue||"")+'</div>' +
         '<div style="margin-top:6px">🅿️ '+(E.parkingNote||"")+'</div></div></div>';
       new QRCode(document.getElementById("qr"),
-        { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+        { text: location.href, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
+      const button = document.getElementById("participateBtn");
+      if (button) button.onclick = participate;
+  }
+
+  async function participate() {
+    if (participating) return;
+    if (!confirm("スタッフの方へ\n\n参加者がイベントへ参加する時だけ「OK」を押してください。\n一度参加済みにすると、このボタンは二度と押せません。")) return;
+    participating = true;
+    const button = document.getElementById("participateBtn");
+    if (button) { button.disabled = true; button.textContent = "確認中…"; }
+    try {
+      await db.runTransaction(async transaction => {
+        const ref = db.collection("registrations").doc(id);
+        const snap = await transaction.get(ref);
+        if (!snap.exists) throw new Error("not-found");
+        const data = snap.data();
+        if (!data.checkedIn) throw new Error("not-checked-in");
+        if (data.eventParticipated) throw new Error("already-participated");
+        transaction.update(ref, {
+          eventParticipated:true,
+          eventParticipatedAt:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      });
     } catch (e) {
       console.error(e);
-      box.innerHTML = '<p class="lead">読み込みに失敗しました。通信環境をご確認ください。</p>';
+      if (e.message === "already-participated") alert("このイベントにはすでに参加済みです。");
+      else if (e.message === "not-checked-in") alert("受付完了後に参加できます。先に受付をお済ませください。");
+      else alert("参加確認を記録できませんでした。通信環境をご確認のうえ、もう一度お試しください。");
+      participating = false;
+      if (button && document.body.contains(button)) { button.disabled = false; button.textContent = "イベントに参加する"; }
     }
-  })();
+  }
 
   function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 </script>
