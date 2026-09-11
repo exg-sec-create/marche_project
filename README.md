@@ -7,6 +7,7 @@
 - 業者用受付フォーム: `vendor.html`
 - QRチケット再表示: `ticket.html`
 - 受付スキャナー（スタッフ）: `checkin.html`
+- イベント参加受付スキャナー（スタッフ・1回限り）: `event-checkin.html`
 - 運営ダッシュボード: `admin.html`
 - 設定（ここだけ編集）: `firebase-config.js`
 
@@ -74,6 +75,7 @@ https://exg-sec-create.github.io/marche_project/general.html ← 一般用
 https://exg-sec-create.github.io/marche_project/referral.html ← OB様紹介のお客様用（当日登録）
 https://exg-sec-create.github.io/marche_project/vendor.html ← 業者用
 https://exg-sec-create.github.io/marche_project/checkin.html ← 受付（スタッフ）
+https://exg-sec-create.github.io/marche_project/event-checkin.html ← イベント参加受付（スタッフ・1回限り）
 https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 ```
 カメラ利用（受付）は HTTPS 必須ですが、GitHub Pages は HTTPS なので問題ありません。
@@ -84,6 +86,7 @@ https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 - 駐車場のご案内: `firebase-config.js` の `EVENT.parkingNote` を書き換えて push。
 - 時間帯・定員: `TIME_SLOTS` / `SLOT_CAPACITY`。
 - 受付ページの修正: `checkin.html` を直接編集して push。QRが読めない時の名前検索→手動受付／取消も実装済み。
+- イベント参加受付: 来場受付と同じQRを `event-checkin.html` で読み取ります。来場受付とは別に参加済みを記録し、同じ引換券の2回目以降の利用を拒否します。
 
 ## 運営ダッシュボードで登録内容を保存できない場合
 登録内容の編集には、リポジトリ内の `firestore.rules` を Firebase に反映する必要があります。

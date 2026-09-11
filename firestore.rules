@@ -27,7 +27,9 @@ service cloud.firestore {
           && d.slot.size() <= 40
           && d.registrationType in ['owner', 'general', 'referral', 'vendor']
           && d.checkedIn == false
-          && d.checkedInAt == null;
+          && d.checkedInAt == null
+          && d.eventParticipated == false
+          && d.eventParticipatedAt == null;
     }
   }
 }
