@@ -81,9 +81,20 @@ https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 ---
 
 ## よくある編集
-- 駐車場のご案内: `firebase-config.js` の `EVENT.parkingNote` を書き換えて push。
 - 時間帯・定員: `TIME_SLOTS` / `SLOT_CAPACITY`。
 - 受付ページの修正: `checkin.html` を直接編集して push。QRが読めない時の名前検索→手動受付／取消も実装済み。
+
+## 来場人数の保存項目
+来場者向けフォームでは、来場人数を次の2項目に分けて回答・保存します（業者用フォームでは空文字を保存します）。
+
+- `adultCount`: 大人の人数（1〜5名、または6名以上）
+- `childCount`: 子どもの人数（0〜5名、または6名以上）。子どもは小学生以下です。
+
+これらの項目を含む新規登録を許可するため、`firestore.rules` も更新しています。GitHub Pages への push に加えて、次のコマンドでルールを Firebase に反映してください。
+
+```bash
+npx firebase-tools deploy --only firestore:rules --project marche2026-86ab6
+```
 
 ## 運営ダッシュボードで登録内容を保存できない場合
 登録内容の編集には、リポジトリ内の `firestore.rules` を Firebase に反映する必要があります。

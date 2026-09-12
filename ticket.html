@@ -45,8 +45,7 @@
         '<div class="hint">'+(E.dateLabel||"")+' '+(E.dow||"")+' ・ '+(E.timeLabel||"")+'</div>' +
         (d.checkedIn ? '<div class="hint" style="color:var(--green);font-weight:800">✓ 受付済みです</div>' : '') +
         '</div><div class="perf"><span class="notch l"></span><span class="notch r"></span></div>' +
-        '<div class="foot"><div>会場：'+(E.venue||"")+'</div>' +
-        '<div style="margin-top:6px">🅿️ '+(E.parkingNote||"")+'</div></div></div>';
+        '<div class="foot"><div>会場：'+(E.venue||"")+'</div></div></div>';
       new QRCode(document.getElementById("qr"),
         { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
     } catch (e) {
