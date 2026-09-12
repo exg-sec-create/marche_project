@@ -26,6 +26,12 @@ service cloud.firestore {
           && d.slot is string
           && d.slot.size() <= 40
           && d.registrationType in ['owner', 'general', 'referral', 'vendor']
+          && d.adultCount is string
+          && d.childCount is string
+          && (d.registrationType == 'vendor'
+              ? d.adultCount == '' && d.childCount == ''
+              : d.adultCount in ['1', '2', '3', '4', '5', '6+']
+                && d.childCount in ['0', '1', '2', '3', '4', '5', '6+'])
           && d.checkedIn == false
           && d.checkedInAt == null;
     }

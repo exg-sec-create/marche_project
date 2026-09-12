@@ -82,12 +82,21 @@
       <textarea id="remarks" rows="4" placeholder="ご連絡事項などがあればご入力ください"></textarea>
 
       <div id="visitorFields">
-        <label class="req" for="partySize">ご来場人数</label>
-        <select id="partySize">
+        <label class="req" for="adultCount">ご来場人数（大人）</label>
+        <select id="adultCount">
           <option value="">選択してください</option>
           <option value="1">1名</option><option value="2">2名</option><option value="3">3名</option>
           <option value="4">4名</option><option value="5">5名</option><option value="6+">6名以上</option>
         </select>
+
+        <label class="req" for="childCount">ご来場人数（子ども）</label>
+        <select id="childCount" aria-describedby="childCountHint">
+          <option value="">選択してください</option>
+          <option value="0">0名</option><option value="1">1名</option><option value="2">2名</option>
+          <option value="3">3名</option><option value="4">4名</option><option value="5">5名</option>
+          <option value="6+">6名以上</option>
+        </select>
+        <p class="hint" id="childCountHint">※小学生以下</p>
       </div>
 
       <div id="ownerFields" hidden>
@@ -153,8 +162,6 @@
         <div class="chips" id="chips"></div>
       </div>
 
-      <div class="info">🅿️ <span><b>駐車場について</b><br><span id="parking">駐車場は随時ご案内します。</span></span></div>
-
       <div id="err" class="error-box" style="display:none"></div>
       <button id="submit" class="btn">🎟️ 受付してQRチケットをGET！</button>
       <p class="hint" style="text-align:center">次の画面でQRを表示します。スクリーンショットの保存がおすすめです。</p>
@@ -181,7 +188,6 @@
       <div class="perf"><span class="notch l"></span><span class="notch r"></span></div>
       <div class="foot">
         <div id="tVenue"></div>
-        <div id="tParking" style="margin-top:6px"></div>
       </div>
     </div>
 
@@ -205,7 +211,6 @@
   if (E.year) $("yr").textContent = E.year;
   if (E.tagline) $("tagline").textContent = E.tagline;
   if (E.venue) $("venue").textContent = E.venue;
-  if (E.parkingNote) $("parking").textContent = E.parkingNote;
   if (E.dateLabel) $("datebadge").innerHTML =
     E.dateLabel + '<span class="sun">' + (E.dow||"") + '</span>' + (E.timeLabel||"");
 
@@ -318,7 +323,8 @@
       name: $("name").value.trim(), tel: $("tel").value.trim(),
       email: $("email").value.trim(), address: $("address").value.trim(), remarks: $("remarks").value.trim(),
       slot: selectedSlot,
-      partySize: $("partySize").value,
+      adultCount: $("adultCount").value,
+      childCount: $("childCount").value,
       company: $("company").value.trim(), booth: $("booth").value.trim(),
       referrerName: $("referrerName").value.trim(),
       homeInterest: $("homeInterest").value,
@@ -332,7 +338,8 @@
     if (!/^\d{11}$/.test(data.tel)) return showErr("携帯番号はハイフンなしの半角数字11桁で入力してください。");
     if (!isMobile(data.tel)) return showErr("正しい携帯番号を入力してください。連続した数字や同じ数字の繰り返しは使用できません。");
     if (!isEmail(data.email)) return showErr("メールアドレスの形式が正しくありません。");
-    if (data.registrationType !== "vendor" && !data.partySize) return showErr("ご来場人数を選択してください。");
+    if (data.registrationType !== "vendor" && !data.adultCount) return showErr("大人のご来場人数を選択してください。");
+    if (data.registrationType !== "vendor" && !data.childCount) return showErr("子どものご来場人数を選択してください。");
     if (data.registrationType === "owner" && !data.ownerBrand) return showErr("建築されたブランドを選択してください。");
     if (data.registrationType === "vendor" && !data.company) return showErr("会社・店舗名を入力してください。");
     if (data.registrationType === "vendor" && !data.booth) return showErr("ご担当・出店名を入力してください。");
@@ -377,7 +384,6 @@
     $("tSlot").textContent = data.slot ? "来場 " + data.slot : "時間指定なし";
     $("tDate").textContent = (E.dateLabel||"") + " " + (E.dow||"") + " ・ " + (E.timeLabel||"");
     $("tVenue").textContent = "会場：" + (E.venue||"");
-    $("tParking").textContent = "🅿️ " + (E.parkingNote||"");
     new QRCode($("qr"), { text: url, width: 220, height: 220, correctLevel: QRCode.CorrectLevel.M });
     $("tLink").innerHTML = '<a href="'+url+'">このチケットのURL</a>（後から再表示できます）';
     $("formView").style.display = "none";
