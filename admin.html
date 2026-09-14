@@ -185,8 +185,8 @@
   function followUpStatus(record) { return record.followUpStatus || (record.homeInterest === "interested" && record.homeStage !== "already_built" ? "valid" : "invalid"); }
   function followUpStatusLabel(record) { return record.registrationType === "general" ? (followUpStatus(record) === "valid" ? "有効客" : "無効客") : ""; }
   function neckStrapInfo(record) {
-    if (record.registrationType === "owner") return ({ exceed_home:{ label:"オレンジ", color:"#f97316" }, besto_haus:{ label:"青", color:"#2563eb" }, pg_house_yamagata:{ label:"黄色", color:"#facc15" } })[record.ownerBrand] || null;
-    if (record.registrationType === "referral") return { label:"ピンク", color:"#ec4899" };
+    if (record.registrationType === "owner") return ({ exceed_home:{ label:"オレンジ", color:"#f97316" }, besto_haus:{ label:"青", color:"#2563eb" }, pg_house_yamagata:{ label:"ピンク", color:"#ec4899" } })[record.ownerBrand] || null;
+    if (record.registrationType === "referral") return { label:"黄色", color:"#facc15" };
     if (record.registrationType === "general") return followUpStatus(record) === "valid" ? { label:"赤", color:"#dc2626" } : { label:"グレー", color:"#6b7280" };
     return null;
   }
