@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>イベント参加受付スキャナー</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  body { background:#101827; color:#fff; background-image:none; }
+  .scan { max-width:560px; margin:0 auto; padding:14px 16px 40px; }
+  .hdr { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:6px 2px 12px; }
+  .hdr .t { font-weight:800; color:#fff; } .hdr .t small { display:block; color:#9cabc3; font-weight:400; }
+  .hdr button { background:none; border:1px solid #40506a; color:#dbe6f8; padding:8px 12px; border-radius:8px; cursor:pointer; }
+  .notice { margin:0 0 12px; padding:10px 12px; border-radius:10px; background:#1e2a40; color:#dbe6f8; font-size:.88rem; }
+  #reader { border-radius:16px; overflow:hidden; background:#000; }
+  #reader video { width:100% !important; display:block; }
+  .count { text-align:center; color:#aebbd0; font-size:.9rem; margin:12px 0; }
+  .toggle { width:100%; padding:12px; border-radius:10px; border:1px solid #40506a; background:#1a263b; color:#dbe6f8; font-weight:700; cursor:pointer; }
+  #manual { display:none; margin-top:12px; background:#1a263b; border:1px solid #33435e; border-radius:12px; padding:14px; }
+  #manual input { width:100%; padding:12px; border-radius:10px; border:1px solid #40506a; background:#101827; color:#fff; font-size:16px; }
+  .hit { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid #33435e; }
+  .hit .nm { font-weight:700; } .hit .sub { color:#aebbd0; font-size:.8rem; }
+  .hit button { padding:8px 12px; border:0; border-radius:8px; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; }
+  .hit button:disabled { background:#596579; cursor:not-allowed; }
+  .login { max-width:380px; margin:44px auto; }
+  #ov { position:fixed; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px; z-index:50; }
+  #ov .ic { font-size:4.5rem; line-height:1; } #ov .bg { font-size:2.2rem; font-weight:800; margin:10px 0 4px; }
+  #ov .sm { font-size:1.1rem; opacity:.94; }
+  #ovOk { min-width:180px; margin-top:28px; padding:13px 28px; border:2px solid #fff; border-radius:12px; background:#fff; color:#182033; font:inherit; font-weight:800; cursor:pointer; }
+  .ok { background:#16a34a; } .already { background:#d97706; } .bad { background:#dc2626; }
+</style>
+</head>
+<body>
+<div class="login card" id="loginBox" style="color:var(--ink)">
+  <div class="section-title"><span>イベント参加受付</span></div>
+  <p class="lead">配布されたスタッフアカウントでログインしてください。</p>
+  <input id="email" type="email" placeholder="メールアドレス" autocomplete="username" />
+  <input id="password" type="password" placeholder="パスワード" autocomplete="current-password" />
+  <div id="loginErr" class="error-box" style="display:none"></div>
+  <button id="loginBtn" class="btn">ログインしてスキャン開始</button>
+</div>
+
+<main class="scan" id="scanBox" style="display:none">
+  <div class="hdr"><div class="t">🎫 イベント参加受付 <small id="who"></small></div><button id="logout">ログアウト</button></div>
+  <p class="notice">通常受付で使用するQRチケットを読み取ります。参加引換はお一組につき1回のみです。</p>
+  <div id="reader"></div>
+  <div class="count" id="count">イベント参加 0 件</div>
+  <button class="toggle" id="toggleManual">QRが読めない時（名前で検索）</button>
+  <div id="manual"><input id="q" placeholder="名前・電話・メールで検索" /><div id="hits"></div></div>
+</main>
+
+<div id="ov" role="dialog" aria-modal="true" aria-live="assertive">
+  <div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div><div class="sm" id="ovMsg"></div>
+  <button type="button" id="ovOk">OK（次の読み取りへ）</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+  firebase.initializeApp(window.firebaseConfig);
+  const auth = firebase.auth(), db = firebase.firestore(), $ = id => document.getElementById(id);
+  let user = null, scanner = null, busy = false, lastCode = "", lastTime = 0, audioCtx = null, cache = [], feedbackTimer = null;
+
+  $("loginBtn").onclick = async () => {
+    $("loginErr").style.display = "none";
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (_) {}
+    try { await auth.signInWithEmailAndPassword($("email").value.trim(), $("password").value); }
+    catch (_) { $("loginErr").textContent = "ログインに失敗しました。"; $("loginErr").style.display = "block"; }
+  };
+  $("logout").onclick = () => auth.signOut();
+  auth.onAuthStateChanged(async currentUser => {
+    user = currentUser;
+    if (currentUser) {
+      $("loginBox").style.display = "none"; $("scanBox").style.display = "block"; $("who").textContent = currentUser.email;
+      await warm(); await refresh(); startScanner();
+    } else {
+      $("loginBox").style.display = "block"; $("scanBox").style.display = "none";
+      if (scanner) { scanner.stop().catch(() => {}); scanner = null; }
+    }
+  });
+
+  async function warm() {
+    try { const snapshot = await db.collection("registrations").get(); cache = snapshot.docs.map(doc => ({ id:doc.id, ...doc.data() })); } catch (_) {}
+  }
+  async function refresh() {
+    try { const snapshot = await db.collection("registrations").where("eventParticipated", "==", true).get(); $("count").textContent = "イベント参加 " + snapshot.size + " 件"; } catch (_) {}
+  }
+  function startScanner() {
+    scanner = new Html5Qrcode("reader");
+    scanner.start({ facingMode:"environment" }, { fps:10, qrbox:{ width:260, height:260 } }, onScan, () => {})
+      .catch(error => alert("カメラを起動できませんでした。カメラ許可をご確認ください。\n" + error));
+  }
+  async function onScan(text) {
+    const now = Date.now();
+    if (busy || (text === lastCode && now - lastTime < 3000)) return;
+    lastCode = text; lastTime = now; busy = true;
+    show(await redeem(extractId(text))); await refresh();
+    feedbackTimer = setTimeout(hideFeedback, 6000);
+  }
+  function extractId(text) {
+    try { const url = new URL(text); const id = url.searchParams.get("id"); if (id) return id; } catch (_) {}
+    return text.trim();
+  }
+
+  // Transaction prevents two cameras from accepting the same ticket at the same time.
+  async function redeem(id) {
+    if (!id) return { status:"notfound" };
+    const ref = db.collection("registrations").doc(id);
+    try {
+      return await db.runTransaction(async transaction => {
+        const snapshot = await transaction.get(ref);
+        if (!snapshot.exists) return { status:"notfound" };
+        const data = snapshot.data();
+        if (data.eventParticipated === true) return { status:"already", name:data.name };
+        transaction.update(ref, {
+          eventParticipated:true,
+          eventParticipatedAt:firebase.firestore.FieldValue.serverTimestamp(),
+          eventParticipatedBy:user.email
+        });
+        return { status:"ok", name:data.name };
+      });
+    } catch (error) { console.error(error); return { status:"error" }; }
+  }
+
+  $("toggleManual").onclick = () => {
+    const panel = $("manual"), open = panel.style.display !== "block";
+    panel.style.display = open ? "block" : "none";
+    if (open) { warm(); $("q").focus(); }
+  };
+  $("q").addEventListener("input", renderHits);
+  function renderHits() {
+    const query = $("q").value.trim().toLowerCase();
+    const hits = !query ? [] : cache.filter(record => [record.name, record.tel, record.email].some(value => (value || "").toLowerCase().includes(query))).slice(0, 8);
+    $("hits").innerHTML = hits.map(record => '<div class="hit"><div><div class="nm">' + esc(record.name) + (record.eventParticipated ? ' ✓' : '') + '</div><div class="sub">' + esc(record.tel || "") + '</div></div><button data-id="' + record.id + '"' + (record.eventParticipated ? ' disabled' : '') + '>' + (record.eventParticipated ? '参加済み' : '参加受付') + '</button></div>').join("") || '<div class="sub" style="padding:8px 4px">該当なし</div>';
+    $("hits").querySelectorAll("button:not(:disabled)").forEach(button => button.onclick = async () => {
+      busy = true; show(await redeem(button.dataset.id)); await warm(); await refresh(); renderHits();
+      feedbackTimer = setTimeout(hideFeedback, 6000);
+    });
+  }
+
+  function show(result) {
+    const overlay = $("ov"); overlay.className = "";
+    if (result.status === "ok") { overlay.classList.add("ok"); $("ovIc").textContent = "✓"; $("ovName").textContent = result.name + " 様"; $("ovMsg").textContent = "イベント参加受付が完了しました"; beep(880); vibrate([120]); }
+    else if (result.status === "already") { overlay.classList.add("already"); $("ovIc").textContent = "!"; $("ovName").textContent = result.name + " 様"; $("ovMsg").textContent = "この引換券はすでに使用済みです"; beep(440); vibrate([80,60,80]); }
+    else if (result.status === "notfound") { overlay.classList.add("bad"); $("ovIc").textContent = "×"; $("ovName").textContent = "未登録のQR"; $("ovMsg").textContent = "受付情報が見つかりません"; beep(220); vibrate([200]); }
+    else { overlay.classList.add("bad"); $("ovIc").textContent = "×"; $("ovName").textContent = "エラー"; $("ovMsg").textContent = "通信状態をご確認ください"; beep(220); vibrate([200]); }
+    overlay.style.display = "flex"; $("ovOk").focus();
+  }
+  function hideFeedback() { clearTimeout(feedbackTimer); feedbackTimer = null; $("ov").style.display = "none"; busy = false; }
+  $("ovOk").onclick = hideFeedback;
+  function beep(frequency) { if (!audioCtx) return; try { const oscillator = audioCtx.createOscillator(), gain = audioCtx.createGain(); oscillator.frequency.value = frequency; oscillator.connect(gain); gain.connect(audioCtx.destination); gain.gain.setValueAtTime(.15, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + .25); oscillator.start(); oscillator.stop(audioCtx.currentTime + .25); } catch (_) {} }
+  function vibrate(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+  function esc(value) { return String(value ?? "").replace(/[&<>"']/g, character => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[character]); }
+</script>
+</body>
+</html>
