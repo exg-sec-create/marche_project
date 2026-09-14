@@ -181,8 +181,8 @@
   };
   function followUpStatus(r){ return r.followUpStatus || (r.homeInterest === "interested" && r.homeStage !== "already_built" ? "valid" : "invalid"); }
   function neckStrapInfo(r){
-    if (r.registrationType === "owner") return ({ exceed_home:{ label:"オレンジ", color:"#f97316" }, besto_haus:{ label:"青", color:"#2563eb" }, pg_house_yamagata:{ label:"黄色", color:"#facc15" } })[r.ownerBrand] || null;
-    if (r.registrationType === "referral") return { label:"ピンク", color:"#ec4899" };
+    if (r.registrationType === "owner") return ({ exceed_home:{ label:"オレンジ", color:"#f97316" }, besto_haus:{ label:"青", color:"#2563eb" }, pg_house_yamagata:{ label:"ピンク", color:"#ec4899" } })[r.ownerBrand] || null;
+    if (r.registrationType === "referral") return { label:"黄色", color:"#facc15" };
     if (r.registrationType === "general") return followUpStatus(r) === "valid" ? { label:"赤", color:"#dc2626" } : { label:"グレー", color:"#6b7280" };
     return null;
   }
