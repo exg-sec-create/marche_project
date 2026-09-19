@@ -106,6 +106,23 @@ npx firebase-tools deploy --only firestore:rules --project marche2026-86ab6
 
 `Missing or insufficient permissions` と表示される場合は、先に Firebase CLI へログインし、上記コマンドで最新ルールを反映してください。
 
+## QRチケット再送メールの初期設定
+
+運営ダッシュボードの「QR再送」は Firestore の `mail` コレクションへ送信依頼を登録し、Firebase の **Trigger Email** extension からメールを配信します。利用開始前に、Firebase コンソールの Extensions から「Trigger Email」をインストールし、次の項目を設定してください。
+
+- Email documents collection: `mail`
+- SMTP connection URI: 利用するメールサービスの SMTP 接続情報
+- Default FROM address: イベント運営用の送信元メールアドレス
+- Default REPLY-TO address: 問い合わせを受け取るメールアドレス（任意）
+
+あわせて、メール送信キューへの書き込みを許可する最新ルールをデプロイします。
+
+```bash
+npx firebase-tools deploy --only firestore:rules --project marche2026-86ab6
+```
+
+設定後は、ダッシュボードで送信先を確認して「QR再送」を実行すると、来場者名、イベント情報、QRチケット表示用URLを含むメールがキューに登録されます。連打による重複登録を防ぎ、登録データには最終依頼日時・依頼者・依頼回数が監査情報として保存されます。
+
 ## 補足
 - 500組でも安定: 静的配信（Pages CDN）＋ Firestore（自動スケール）。会場Wi-Fi不安定時もオフライン永続化＋起動時プリロードで継続。
 - 無料枠: 予約500＋受付500で書込約1,000・読取数千。Firebase無料枠（書込2万/日・読取5万/日）に収まります。
