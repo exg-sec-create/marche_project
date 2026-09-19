@@ -9,6 +9,32 @@ service cloud.firestore {
       allow delete: if canDeleteRegistration();
     }
 
+    // Trigger Email extension が監視する送信キュー。クライアントからは
+    // 認証済みスタッフによる、必要最小限の形式の新規追加だけを許可する。
+    match /mail/{id} {
+      allow create: if isStaff()
+          && request.resource.data.keys().hasOnly([
+            'to', 'message', 'registrationId', 'requestedAt', 'requestedBy'
+          ])
+          && request.resource.data.to is list
+          && request.resource.data.to.size() == 1
+          && request.resource.data.to[0] is string
+          && request.resource.data.to[0].size() <= 200
+          && request.resource.data.message is map
+          && request.resource.data.message.keys().hasOnly(['subject', 'text', 'html'])
+          && request.resource.data.message.subject is string
+          && request.resource.data.message.subject.size() <= 200
+          && request.resource.data.message.text is string
+          && request.resource.data.message.text.size() <= 10000
+          && request.resource.data.message.html is string
+          && request.resource.data.message.html.size() <= 20000
+          && request.resource.data.registrationId is string
+          && request.resource.data.registrationId.size() > 0
+          && request.resource.data.requestedAt == request.time
+          && request.resource.data.requestedBy == request.auth.token.email;
+      allow read, update, delete: if false;
+    }
+
     function isStaff() {
       return request.auth != null;
     }
