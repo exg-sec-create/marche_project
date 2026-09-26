@@ -243,6 +243,7 @@
       <div class="kpi"><div class="k-label">子ども</div><div class="k-value" id="aChildren">0</div><div class="k-note">名（小学生以下）</div></div>
       <div class="kpi"><div class="k-label">有効客</div><div class="k-value" id="aValid">0</div><div class="k-note" id="aValidRate">一般来場者の 0%</div></div>
       <div class="kpi"><div class="k-label">無効客</div><div class="k-value" id="aInvalid">0</div><div class="k-note">一般来場者</div></div>
+      <div class="kpi"><div class="k-label">EXCEED GROUP認知率</div><div class="k-value" id="aAwarenessRate">0%</div><div class="k-note" id="aAwarenessNote">回答 0組</div></div>
     </div>
     <div class="analytics-grid">
       <article class="analytics-card"><div class="card-heading"><h3>時間帯別の受付数</h3><small>実際の受付時刻</small></div><div id="hourChart"></div><div class="insight" id="peakInsight">受付データが蓄積されると、ピーク時間を表示します。</div></article>
@@ -250,6 +251,9 @@
       <article class="analytics-card"><div class="card-heading"><h3>来場者区分</h3><small>組数ベース</small></div><div id="typeChart"></div></article>
       <article class="analytics-card"><div class="card-heading"><h3>住まいづくりの検討状況</h3><small>一般のお客様</small></div><div id="stageChart"></div></article>
       <article class="analytics-card"><div class="card-heading"><h3>希望する案内方法</h3><small>次回アプローチ</small></div><div id="contactChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>お住まいの都道府県</h3><small>イベント参加地域</small></div><div id="prefectureChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>EXCEED GROUPの認知</h3><small>一般のお客様</small></div><div id="companyAwarenessChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>EXCEED GROUPを知ったきっかけ</h3><small>複数回答</small></div><div id="awarenessSourcesChart"></div></article>
       <article class="analytics-card"><div class="card-heading"><h3>予約時間帯別の来場実績</h3><small>予約 / 受付</small></div><div id="slotAnalytics"></div></article>
     </div>
   </section>
@@ -557,6 +561,10 @@
     $("aChildren").textContent = children.toLocaleString("ja-JP");
     $("aValid").textContent = valid.toLocaleString("ja-JP");
     $("aInvalid").textContent = (general.length - valid).toLocaleString("ja-JP");
+    const awarenessAnswered = general.filter(record => ["known", "unknown"].includes(record.companyAwareness));
+    const awarenessKnown = awarenessAnswered.filter(record => record.companyAwareness === "known").length;
+    $("aAwarenessRate").textContent = `${awarenessAnswered.length ? Math.round(awarenessKnown / awarenessAnswered.length * 100) : 0}%`;
+    $("aAwarenessNote").textContent = `回答 ${awarenessAnswered.length}組中 ${awarenessKnown}組`;
     $("aRate").textContent = `来場率 ${all.length ? Math.round(checkedIn.length / all.length * 100) : 0}%（予約 ${all.length}組）`;
     $("aValidRate").textContent = `一般${$("analyticsScope").value === "all" ? "予約" : "来場"}者の ${general.length ? Math.round(valid / general.length * 100) : 0}%`;
     $("analyticsSubtitle").textContent = `${E.name || "イベント"} ${E.dateLabel || ""}｜最終更新 ${new Date().toLocaleTimeString("ja-JP", { hour:"2-digit", minute:"2-digit" })}`;
@@ -569,11 +577,15 @@
     renderBars("typeChart", aggregate(records, record => typeLabel(record.registrationType)));
     renderBars("stageChart", aggregate(general, record => homeStageLabel(record.homeStage) || "未回答"), "orange");
     renderBars("contactChart", aggregate(general, record => contactPreferenceLabel(record.contactPreference) || "未回答"));
+    renderBars("prefectureChart", aggregate(general, record => record.prefecture || "未回答"), "orange");
+    renderBars("companyAwarenessChart", aggregate(general, record => companyAwarenessLabel(record.companyAwareness) || "未回答"));
+    renderBars("awarenessSourcesChart", aggregateMultiple(general, record => record.awarenessSources, awarenessSourceLabel), "orange");
     const slots = (window.TIME_SLOTS || []).map(slot => ({ label:slot, reserved:all.filter(record => record.slot === slot).length, arrived:checkedIn.filter(record => record.slot === slot).length }));
     $("slotAnalytics").innerHTML = slots.length ? slots.map(item => `<div class="bar-row"><span class="bar-label" title="${esc(item.label)}">${esc(item.label)}</span><div class="bar-track"><div class="bar-fill orange" style="width:${item.reserved ? item.arrived / item.reserved * 100 : 0}%"></div></div><span class="bar-value">${item.arrived}/${item.reserved}</span></div>`).join("") : '<div class="empty-chart">時間帯データがありません</div>';
   }
   function countValue(value) { const number = parseInt(String(value ?? "").match(/\d+/)?.[0] || "0", 10); return Number.isFinite(number) ? number : 0; }
   function aggregate(records, labeler) { const counts = {}; records.forEach(record => { const label = labeler(record); counts[label] = (counts[label] || 0) + 1; }); return Object.entries(counts).sort((a,b) => b[1] - a[1]); }
+  function aggregateMultiple(records, values, labeler) { const counts = {}; records.forEach(record => { const selected = values(record); if (!Array.isArray(selected)) return; selected.forEach(value => { const label = labeler(value) || value; counts[label] = (counts[label] || 0) + 1; }); }); return Object.entries(counts).sort((a,b) => b[1] - a[1]); }
   function renderBars(id, entries, color = "") { const target = $(id); if (!entries.length) { target.innerHTML = '<div class="empty-chart">対象データがありません</div>'; return; } const max = Math.max(...entries.map(([, value]) => value), 1); target.innerHTML = entries.map(([label, value]) => `<div class="bar-row"><span class="bar-label" title="${esc(label)}">${esc(label)}</span><div class="bar-track"><div class="bar-fill ${color}" style="width:${value / max * 100}%"></div></div><span class="bar-value">${value}組</span></div>`).join(""); }
   function openQrDialog(id) {
     const record = all.find(item => item.id === id);
@@ -691,7 +703,7 @@
       $("editErr").style.display = "block";
     } finally { save.disabled = false; }
   };
-  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "架電状況", "営業担当者", "メール", "資料送付先住所", "備考", "運営メモ", "大人人数", "子ども人数（小学生以下）", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "ネックストラップ", "受付", "受付時刻", "受付対応者", "突合済み顧客ID", "突合済み顧客名"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, callStatusLabel(record.callStatus), record.salesperson, record.email, record.address, record.remarks, record.adminMemo, record.adultCount || record.partySize, record.childCount, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : "", record.checkedInBy || "", record.matchedCustomerId || "", record.matchedCustomerName || ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
+  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "架電状況", "営業担当者", "メール", "資料送付先住所", "備考", "運営メモ", "大人人数", "子ども人数（小学生以下）", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "お住まいの都道府県", "EXCEED GROUPの認知", "知ったきっかけ（複数回答）", "判定", "ネックストラップ", "受付", "受付時刻", "受付対応者", "突合済み顧客ID", "突合済み顧客名"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, callStatusLabel(record.callStatus), record.salesperson, record.email, record.address, record.remarks, record.adminMemo, record.adultCount || record.partySize, record.childCount, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), record.prefecture, companyAwarenessLabel(record.companyAwareness), (record.awarenessSources || []).map(awarenessSourceLabel).join(" / "), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : "", record.checkedInBy || "", record.matchedCustomerId || "", record.matchedCustomerName || ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
   function fmt(date) { return date.toLocaleString("ja-JP", { month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit" }); }
   function typeLabel(type) { return ({ owner:"オーナー様", general:"一般", referral:"紹介", vendor:"業者" })[type] || "一般"; }
   function homeInterestLabel(value) { return ({ interested:"興味あり", not_interested:"興味なし" })[value] || ""; }
@@ -699,6 +711,8 @@
   function brandAwarenessLabel(value) { return ({ exceed_home:"EXCEED HOME", besto_haus:"BESTO HAUS", pg_house_yamagata:"PG HOUSE 山形", unsure:"まだわからない" })[value] || ""; }
   function ownerBrandLabel(value) { return ({ exceed_home:"EXCEED HOME", besto_haus:"BESTO HAUS", pg_house_yamagata:"PG HOUSE 山形", other:"その他" })[value] || ""; }
   function contactPreferenceLabel(value) { return ({ phone:"電話で話を聞きたい", email:"メールで情報を受け取りたい", mail:"資料を郵送してほしい", none:"今は案内を希望しない" })[value] || ""; }
+  function companyAwarenessLabel(value) { return ({ known:"知っている。", unknown:"知らない" })[value] || ""; }
+  function awarenessSourceLabel(value) { return ({ flyer:"チラシ", signboard:"看板", instagram:"インスタグラム", tiktok:"tiktok", poster:"ポスター", youtube:"YouTube（とが社長のガレージハウスch）", brand_car:"ブランドカー", line:"LINE", marche_2025:"2025マルシェ", yamagata_fireworks:"山形花火大会", montedio_yamagata:"モンテディオ山形", other:"その他" })[value] || ""; }
   function callStatusLabel(value) { return ({ not_connected:"未通", connected:"通電" })[value] || ""; }
   function followUpStatus(record) { return record.followUpStatus || (record.homeInterest === "interested" && record.homeStage !== "already_built" ? "valid" : "invalid"); }
   function followUpStatusLabel(record) { return record.registrationType === "general" ? (followUpStatus(record) === "valid" ? "有効客" : "無効客") : ""; }

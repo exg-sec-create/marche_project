@@ -156,6 +156,11 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--t
 .info b { color:#2f5a17; }
 .error-box { background:#fdecec; border:1px solid #f5c2c2; color:#a12020; padding:12px 14px;
   border-radius:12px; margin-top:16px; font-size:.9rem; }
+.checkbox-fieldset { border:0; padding:0; margin:18px 0 0; }
+.checkbox-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; margin-top:10px; }
+.checkbox-grid label { display:flex; align-items:flex-start; gap:8px; margin:0; padding:11px; border:1px solid var(--line); border-radius:10px; background:#fff; font-weight:600; cursor:pointer; }
+.checkbox-grid input { width:18px; height:18px; flex:0 0 auto; margin:1px 0 0; accent-color:var(--blue); }
+@media (max-width:520px) { .checkbox-grid { grid-template-columns:1fr; } }
 
 /* ---- チケット（半券デザイン） ---- */
 .ticket { position: relative; background: var(--card); border-radius: 18px; box-shadow: var(--shadow);
