@@ -41,6 +41,9 @@
   .master-dialog { width:min(1040px,calc(100% - 24px)); }
   .master-dialog .table-wrap { max-height:60vh; overflow:auto; }
   .master-dialog th { position:sticky; top:0; z-index:1; }
+  .matching-access-dialog { width:min(420px,calc(100% - 24px)); }
+  .matching-access-dialog p { margin:0 0 16px; color:var(--muted); line-height:1.6; }
+  .matching-access-dialog input { margin-top:6px; }
   .after-check { display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap; font-size:.8rem; }
   .after-check input { width:18px; height:18px; margin:0; }
   table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); font-size:.9rem; }
@@ -258,12 +261,24 @@
   <div class="dialog-actions"><button type="button" class="act" id="customerMastersClose">閉じる</button></div>
 </dialog>
 
+<dialog id="matchingAccessDialog" class="matching-access-dialog" aria-labelledby="matchingAccessTitle">
+  <form id="matchingAccessForm" method="dialog">
+    <div class="section-title"><span id="matchingAccessTitle">顧客突合を開く</span></div>
+    <p>顧客突合ページを見るには、専用パスワードを入力してください。</p>
+    <label for="matchingAccessPassword">パスワード</label>
+    <input id="matchingAccessPassword" type="password" inputmode="numeric" autocomplete="current-password" required />
+    <div id="matchingAccessError" class="error-box" role="alert" style="display:none">パスワードが正しくありません。</div>
+    <div class="dialog-actions"><button type="button" class="act" id="matchingAccessCancel">キャンセル</button><button type="submit" class="btn">確認</button></div>
+  </form>
+</dialog>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
 <script src="src/customer-matching.js"></script>
+<script src="src/matching-access.js"></script>
 <script>
   firebase.initializeApp(window.firebaseConfig);
   const auth = firebase.auth(), db = firebase.firestore();
@@ -279,6 +294,7 @@
   let matchingRegistrationId = null;
   let qrDialogId = null;
   let statusFilter = "all";
+  let matchingAccessGranted = false;
 
   (window.TIME_SLOTS || []).forEach(slot => $("editSlot").add(new Option(slot, slot)));
 
@@ -290,7 +306,7 @@
   $("logout").onclick = () => auth.signOut();
   auth.onAuthStateChanged(user => {
     if (user) { $("loginBox").style.display = "none"; $("main").style.display = "block"; $("title").textContent = `${E.name || ""} ${E.year || ""} 顧客管理`; listen(); listenCustomers(); }
-    else { $("loginBox").style.display = "block"; $("main").style.display = "none"; if (unsub) { unsub(); unsub = null; } if (customerUnsub) { customerUnsub(); customerUnsub = null; } }
+    else { matchingAccessGranted = false; if ($("matchingAccessDialog").open) $("matchingAccessDialog").close(); $("loginBox").style.display = "block"; $("main").style.display = "none"; if (unsub) { unsub(); unsub = null; } if (customerUnsub) { customerUnsub(); customerUnsub = null; } }
   });
   function listen() { unsub = db.collection("registrations").orderBy("createdAt", "desc").onSnapshot(snapshot => { all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); render(); }, error => console.error(error)); }
   function listenCustomers() { customerUnsub = db.collection("customerMasters").onSnapshot(snapshot => { customers = snapshot.docs.map(doc => ({ customerId:doc.id, ...doc.data() })); $("importStatus").textContent = `既存顧客 ${customers.length.toLocaleString("ja-JP")}件`; render(); }, error => { console.error(error); $("importStatus").textContent = "既存顧客データを読み込めませんでした"; }); }
@@ -344,8 +360,26 @@
     if (matching) renderMatching();
   }
   $("customerTab").onclick = () => selectTab("customer");
-  $("matchingTab").onclick = () => selectTab("matching");
+  $("matchingTab").onclick = () => {
+    if (matchingAccessGranted) { selectTab("matching"); return; }
+    $("matchingAccessForm").reset();
+    $("matchingAccessError").style.display = "none";
+    $("matchingAccessDialog").showModal();
+    $("matchingAccessPassword").focus();
+  };
   $("analyticsTab").onclick = () => selectTab("analytics");
+  $("matchingAccessCancel").onclick = () => $("matchingAccessDialog").close();
+  $("matchingAccessForm").onsubmit = event => {
+    event.preventDefault();
+    if (!MatchingAccess.verify($("matchingAccessPassword").value)) {
+      $("matchingAccessError").style.display = "block";
+      $("matchingAccessPassword").select();
+      return;
+    }
+    matchingAccessGranted = true;
+    $("matchingAccessDialog").close();
+    selectTab("matching");
+  };
   $("analyticsScope").onchange = renderAnalytics;
   $("printReport").onclick = () => window.print();
 
