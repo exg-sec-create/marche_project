@@ -160,13 +160,13 @@
       <span class="filter-result" id="filterResult" aria-live="polite"></span>
     </fieldset>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>引渡日</th><th>ランク</th><th>アフター案件あり</th><th>アフター対応完了</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>引渡</th><th>ランク</th><th>アフター案件あり</th><th>アフター対応完了</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
   </section>
   <section id="matchingPanel" class="tab-panel" role="tabpanel" aria-labelledby="matchingTab" hidden>
-    <div class="analytics-head"><div><h2>申込データと既存顧客の突合</h2><p>電話番号・氏名・住所から候補を抽出し、担当者が最終確定できます。</p></div></div>
+    <div class="analytics-head"><div><h2>申込データと既存顧客の突合</h2><p>電話番号・氏名・住所から候補を自動反映し、必要な場合だけ担当者が修正できます。</p></div></div>
     <div class="match-guide">
       <strong>CSVの格納方法：</strong>スプレッドシートを「ファイル → ダウンロード → カンマ区切り形式（.csv）」で保存し、下のファイル欄から読み込んでください。CSVはスタッフでログインしたブラウザからFirestoreの <code>customerMasters</code> に登録され、一般公開されません。<br>
-      必須列は「顧客ID」「顧客名1氏名」です。電話番号・顧客名2・旧住所・新住所・引渡日・ランク・アフター案件ありを利用できます。<br>
+      必須列は「顧客ID」「顧客名1氏名」です。電話番号・顧客名2・旧住所・新住所・引渡・ランク・アフター案件ありを利用できます。候補は自動的に顧客一覧へ反映され、「要確認」「自動候補」の表示を確認しながら必要な場合だけ修正できます。<br>
       <strong>更新方法：</strong>同じ顧客IDは既存データを更新し、新しい顧客IDは追加します。実行前に新規・更新・変更なしの件数と変更項目を表示します。CSVにない列の既存値は保持されますが、列がある空欄は空文字で更新されるためご注意ください。
     </div>
     <div class="import-row">
@@ -257,7 +257,7 @@
   <div class="section-title"><span>インポート済み顧客データ</span></div>
   <p class="hint">顧客ID単位の現在値です。「最終変更」は直近のCSV取込で変更された項目を示します。</p>
   <div class="toolbar"><input id="masterSearch" placeholder="顧客ID・氏名・電話で検索" /></div>
-  <div class="table-wrap"><table><thead><tr><th>顧客ID</th><th>顧客名</th><th>電話番号</th><th>引渡日</th><th>ランク</th><th>アフター案件あり</th><th>最終変更</th></tr></thead><tbody id="customerMasterRows"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>顧客ID</th><th>顧客名</th><th>電話番号</th><th>引渡</th><th>ランク</th><th>アフター案件あり</th><th>最終変更</th></tr></thead><tbody id="customerMasterRows"></tbody></table></div>
   <div class="dialog-actions"><button type="button" class="act" id="customerMastersClose">閉じる</button></div>
 </dialog>
 
@@ -334,7 +334,7 @@
       return matchesSearch && matchesStatus;
     });
     $("filterResult").textContent = `${rows.length}件を表示`;
-    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = customers.find(item => item.customerId === record.matchedCustomerId); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${esc(customer?.handoverDate || "—")}</td><td>${esc(customer?.rank || "—")}</td><td>${esc(customer?.hasAfterProject || "—")}</td><td>${afterDone}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
+    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${esc(customer?.handoverDate || "—")}</td><td>${esc(customer?.rank || "—")}</td><td>${esc(customer?.hasAfterProject || "—")}</td><td>${afterDone}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
     $("rows").querySelectorAll("[data-un]").forEach(button => button.onclick = () => setCheck(button.dataset.un, false));
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
@@ -425,7 +425,7 @@
   };
 
   function customerFieldLabel(key) {
-    return ({ enabled:"有効設定", brand:"ブランド", office:"担当拠点", store:"担当店", salesperson:"担当営業", phase:"フェーズ", name1:"顧客名1", kana1:"顧客名1かな", tel1:"電話番号1", name2:"顧客名2", kana2:"顧客名2かな", tel2:"電話番号2", postalCode:"郵便番号", prefecture:"都道府県", oldAddress:"旧住所", newAddress:"新住所", remarks:"備考", handoverDate:"引渡日", rank:"ランク", hasAfterProject:"アフター案件あり" })[key] || key;
+    return ({ enabled:"有効設定", brand:"ブランド", office:"担当拠点", store:"担当店", salesperson:"担当営業", phase:"フェーズ", name1:"顧客名1", kana1:"顧客名1かな", tel1:"電話番号1", name2:"顧客名2", kana2:"顧客名2かな", tel2:"電話番号2", postalCode:"郵便番号", prefecture:"都道府県", oldAddress:"旧住所", newAddress:"新住所", remarks:"備考", handoverDate:"引渡", rank:"ランク", hasAfterProject:"アフター案件あり" })[key] || key;
   }
   function renderCustomerMasters() {
     const query = $("masterSearch").value.trim().toLowerCase();
