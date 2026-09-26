@@ -38,6 +38,11 @@
   .candidate { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:11px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
   .candidate:hover { border-color:#79abc1; background:#f7fbfd; }
   .candidate-detail { color:var(--muted); font-size:.82rem; line-height:1.5; }
+  .master-dialog { width:min(1040px,calc(100% - 24px)); }
+  .master-dialog .table-wrap { max-height:60vh; overflow:auto; }
+  .master-dialog th { position:sticky; top:0; z-index:1; }
+  .after-check { display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap; font-size:.8rem; }
+  .after-check input { width:18px; height:18px; margin:0; }
   table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); font-size:.9rem; }
   th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); }
   th { background:#eef5fb; font-size:.78rem; color:var(--muted); } tr:last-child td { border-bottom:none; }
@@ -72,7 +77,6 @@
   .qr-checkin-status.done { background:#e2f5e6; color:#166534; font-weight:700; }
   .btn.checkin { background:#16803c; }
   .login { max-width:380px; margin:44px auto; } .login input { margin-bottom:10px; }
-codex-60g5ve
   .page-tabs { display:flex; gap:6px; margin:0 0 20px; padding:5px; width:max-content; max-width:100%; background:#e9f0f4; border-radius:12px; }
   .page-tab { border:0; border-radius:9px; padding:10px 18px; background:transparent; color:var(--muted); font-family:inherit; font-size:.9rem; font-weight:700; cursor:pointer; }
   .page-tab.active { background:#fff; color:var(--blue); box-shadow:0 2px 8px #17324b18; }
@@ -109,7 +113,6 @@ codex-60g5ve
   @media (max-width: 560px) { .analytics-head { align-items:stretch; flex-direction:column; } .analytics-actions { justify-content:space-between; } .kpis { grid-template-columns:repeat(2,1fr); } .page-tabs { width:100%; } .page-tab { flex:1; padding:10px 8px; } .bar-row { grid-template-columns:105px 1fr 40px; } }
 
   @media (max-width: 760px) { .stats { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } .status-filter { align-items:flex-start; } .status-filter legend { float:none; padding-top:10px; } .filter-options { flex:1; } .filter-button { flex:1; padding-inline:8px; } .filter-result { display:none; } }
-main
 </style>
 </head>
 <body>
@@ -154,17 +157,19 @@ main
       <span class="filter-result" id="filterResult" aria-live="polite"></span>
     </fieldset>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>引渡日</th><th>ランク</th><th>アフター案件あり</th><th>アフター対応完了</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
   </section>
   <section id="matchingPanel" class="tab-panel" role="tabpanel" aria-labelledby="matchingTab" hidden>
     <div class="analytics-head"><div><h2>申込データと既存顧客の突合</h2><p>電話番号・氏名・住所から候補を抽出し、担当者が最終確定できます。</p></div></div>
     <div class="match-guide">
       <strong>CSVの格納方法：</strong>スプレッドシートを「ファイル → ダウンロード → カンマ区切り形式（.csv）」で保存し、下のファイル欄から読み込んでください。CSVはスタッフでログインしたブラウザからFirestoreの <code>customerMasters</code> に登録され、一般公開されません。<br>
-      必須列は「顧客ID」「顧客名1氏名」です。電話番号・顧客名2・旧住所・新住所など、提示いただいた列名をそのまま利用できます。
+      必須列は「顧客ID」「顧客名1氏名」です。電話番号・顧客名2・旧住所・新住所・引渡日・ランク・アフター案件ありを利用できます。<br>
+      <strong>更新方法：</strong>同じ顧客IDは既存データを更新し、新しい顧客IDは追加します。実行前に新規・更新・変更なしの件数と変更項目を表示します。CSVにない列の既存値は保持されますが、列がある空欄は空文字で更新されるためご注意ください。
     </div>
     <div class="import-row">
       <input id="customerCsvFile" type="file" accept=".csv,text/csv" aria-label="既存顧客CSV" />
       <button class="btn" id="importCustomerCsv" style="width:auto;margin:0;padding:11px 18px">CSVを取り込む</button>
+      <button class="act" id="showCustomerMasters" type="button">取込データを表示</button>
       <span id="importStatus" class="hint" aria-live="polite">既存顧客 0件</span>
     </div>
     <div class="match-summary">
@@ -245,6 +250,14 @@ main
   <div class="dialog-actions"><button type="button" class="act" id="qrDialogClose">閉じる</button><button type="button" class="btn checkin" id="qrCheckinButton">受付完了</button></div>
 </dialog>
 
+<dialog id="customerMastersDialog" class="master-dialog">
+  <div class="section-title"><span>インポート済み顧客データ</span></div>
+  <p class="hint">顧客ID単位の現在値です。「最終変更」は直近のCSV取込で変更された項目を示します。</p>
+  <div class="toolbar"><input id="masterSearch" placeholder="顧客ID・氏名・電話で検索" /></div>
+  <div class="table-wrap"><table><thead><tr><th>顧客ID</th><th>顧客名</th><th>電話番号</th><th>引渡日</th><th>ランク</th><th>アフター案件あり</th><th>最終変更</th></tr></thead><tbody id="customerMasterRows"></tbody></table></div>
+  <div class="dialog-actions"><button type="button" class="act" id="customerMastersClose">閉じる</button></div>
+</dialog>
+
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
@@ -280,7 +293,7 @@ main
     else { $("loginBox").style.display = "block"; $("main").style.display = "none"; if (unsub) { unsub(); unsub = null; } if (customerUnsub) { customerUnsub(); customerUnsub = null; } }
   });
   function listen() { unsub = db.collection("registrations").orderBy("createdAt", "desc").onSnapshot(snapshot => { all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); render(); }, error => console.error(error)); }
-  function listenCustomers() { customerUnsub = db.collection("customerMasters").onSnapshot(snapshot => { customers = snapshot.docs.map(doc => ({ customerId:doc.id, ...doc.data() })); $("importStatus").textContent = `既存顧客 ${customers.length.toLocaleString("ja-JP")}件`; renderMatching(); }, error => { console.error(error); $("importStatus").textContent = "既存顧客データを読み込めませんでした"; }); }
+  function listenCustomers() { customerUnsub = db.collection("customerMasters").onSnapshot(snapshot => { customers = snapshot.docs.map(doc => ({ customerId:doc.id, ...doc.data() })); $("importStatus").textContent = `既存顧客 ${customers.length.toLocaleString("ja-JP")}件`; render(); }, error => { console.error(error); $("importStatus").textContent = "既存顧客データを読み込めませんでした"; }); }
   $("search").addEventListener("input", render);
   document.querySelectorAll("[data-status-filter]").forEach(button => {
     button.addEventListener("click", () => {
@@ -305,12 +318,13 @@ main
       return matchesSearch && matchesStatus;
     });
     $("filterResult").textContent = `${rows.length}件を表示`;
-    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
+    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = customers.find(item => item.customerId === record.matchedCustomerId); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${esc(customer?.handoverDate || "—")}</td><td>${esc(customer?.rank || "—")}</td><td>${esc(customer?.hasAfterProject || "—")}</td><td>${afterDone}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
     $("rows").querySelectorAll("[data-un]").forEach(button => button.onclick = () => setCheck(button.dataset.un, false));
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
     $("rows").querySelectorAll("[data-qr]").forEach(button => button.onclick = () => openQrDialog(button.dataset.qr));
     $("rows").querySelectorAll("[data-delete]").forEach(button => button.onclick = () => deleteRegistration(button.dataset.delete));
+    $("rows").querySelectorAll("[data-after-complete]").forEach(input => input.onchange = () => setAfterSupportCompleted(input.dataset.afterComplete, input.checked, input));
     renderMatching();
     renderAnalytics();
   }
@@ -343,26 +357,50 @@ main
     try {
       const csvCustomers = CustomerMatching.rowsToCustomers(CustomerMatching.parseCsv(await file.text()));
       if (!csvCustomers.length) throw new Error("取り込み対象の顧客がありません。");
-      if (!confirm(`${csvCustomers.length.toLocaleString("ja-JP")}件を既存顧客データへ登録・更新しますか？`)) return;
+      const ids = csvCustomers.map(customer => customer.customerId);
+      if (new Set(ids).size !== ids.length) throw new Error("CSV内に重複する顧客IDがあります。顧客IDを1行にまとめてください。");
+      const plans = csvCustomers.map(customer => {
+        const existing = customers.find(item => item.customerId === customer.customerId);
+        return { customer, existing, changes:CustomerMatching.customerChanges(existing, customer) };
+      });
+      const additions = plans.filter(plan => !plan.existing);
+      const updates = plans.filter(plan => plan.existing && plan.changes.length);
+      const unchanged = plans.filter(plan => plan.existing && !plan.changes.length);
+      const details = updates.slice(0, 12).map(plan => `・${plan.customer.customerId} ${plan.customer.name1}：${plan.changes.map(customerFieldLabel).join("、")}`).join("\n");
+      const more = updates.length > 12 ? `\n…他 ${updates.length - 12}件` : "";
+      if (!confirm(`CSVの取込内容\n新規追加：${additions.length}件\n既存更新：${updates.length}件\n変更なし：${unchanged.length}件${details ? `\n\n変更箇所\n${details}${more}` : ""}\n\n実行しますか？`)) return;
       let completed = 0;
-      for (let offset = 0; offset < csvCustomers.length; offset += 450) {
+      const writePlans = plans.filter(plan => !plan.existing || plan.changes.length);
+      for (let offset = 0; offset < writePlans.length; offset += 450) {
         const batch = db.batch();
-        csvCustomers.slice(offset, offset + 450).forEach(customer => {
+        writePlans.slice(offset, offset + 450).forEach(({ customer, existing, changes }) => {
           const ref = db.collection("customerMasters").doc(customer.customerId);
-          batch.set(ref, { ...customer, importedAt:firebase.firestore.FieldValue.serverTimestamp(), importedBy:auth.currentUser.email }, { merge:true });
+          batch.set(ref, { ...customer, lastImportKind:existing ? "updated" : "added", lastImportChangedFields:changes, importedAt:firebase.firestore.FieldValue.serverTimestamp(), importedBy:auth.currentUser.email }, { merge:true });
         });
         await batch.commit();
-        completed = Math.min(offset + 450, csvCustomers.length);
-        $("importStatus").textContent = `取り込み中 ${completed}/${csvCustomers.length}件`;
+        completed = Math.min(offset + 450, writePlans.length);
+        $("importStatus").textContent = `取り込み中 ${completed}/${writePlans.length}件`;
       }
       $("customerCsvFile").value = "";
-      $("importStatus").textContent = `${completed.toLocaleString("ja-JP")}件を取り込みました`;
+      $("importStatus").textContent = `新規 ${additions.length}件・更新 ${updates.length}件・変更なし ${unchanged.length}件`;
     } catch (error) {
       console.error("Customer CSV import failed", error);
       $("importStatus").textContent = "CSVの取り込みに失敗しました";
       alert(error.message || "CSVの形式と通信環境をご確認ください。");
     } finally { button.disabled = false; }
   };
+
+  function customerFieldLabel(key) {
+    return ({ enabled:"有効設定", brand:"ブランド", office:"担当拠点", store:"担当店", salesperson:"担当営業", phase:"フェーズ", name1:"顧客名1", kana1:"顧客名1かな", tel1:"電話番号1", name2:"顧客名2", kana2:"顧客名2かな", tel2:"電話番号2", postalCode:"郵便番号", prefecture:"都道府県", oldAddress:"旧住所", newAddress:"新住所", remarks:"備考", handoverDate:"引渡日", rank:"ランク", hasAfterProject:"アフター案件あり" })[key] || key;
+  }
+  function renderCustomerMasters() {
+    const query = $("masterSearch").value.trim().toLowerCase();
+    const visible = customers.filter(customer => !query || [customer.customerId, customer.name1, customer.name2, customer.tel1, customer.tel2].some(value => String(value || "").toLowerCase().includes(query)));
+    $("customerMasterRows").innerHTML = visible.length ? visible.map(customer => `<tr><td>${esc(customer.customerId)}</td><td>${esc(customer.name1)}${customer.name2 ? `<br><small>${esc(customer.name2)}</small>` : ""}</td><td>${esc(customer.tel1 || "—")}${customer.tel2 ? `<br><small>${esc(customer.tel2)}</small>` : ""}</td><td>${esc(customer.handoverDate || "—")}</td><td>${esc(customer.rank || "—")}</td><td>${esc(customer.hasAfterProject || "—")}</td><td>${customer.lastImportKind === "added" ? "新規追加" : esc((customer.lastImportChangedFields || []).map(customerFieldLabel).join("、") || "—")}</td></tr>`).join("") : '<tr><td colspan="7">該当する顧客データはありません。</td></tr>';
+  }
+  $("showCustomerMasters").onclick = () => { $("masterSearch").value = ""; renderCustomerMasters(); $("customerMastersDialog").showModal(); };
+  $("masterSearch").oninput = renderCustomerMasters;
+  $("customerMastersClose").onclick = () => $("customerMastersDialog").close();
 
   function renderMatching() {
     if (!$("matchingRows")) return;
@@ -518,6 +556,22 @@ main
         method
       })
     });
+  }
+  function isAffirmative(value) { return !["", "0", "false", "なし", "無", "無し", "ない", "該当なし", "no"].includes(String(value ?? "").trim().toLowerCase()); }
+  async function setAfterSupportCompleted(id, completed, input) {
+    input.disabled = true;
+    try {
+      await db.collection("registrations").doc(id).update({
+        afterSupportCompleted:completed,
+        afterSupportCompletedAt:completed ? firebase.firestore.FieldValue.serverTimestamp() : null,
+        afterSupportCompletedBy:completed ? (auth.currentUser?.email || "") : null
+      });
+    } catch (error) {
+      console.error("After support update failed", error);
+      input.checked = !completed;
+      input.disabled = false;
+      alert("アフター対応状況を保存できませんでした。通信環境をご確認ください。");
+    }
   }
   function openEditor(id) { const record = all.find(item => item.id === id); if (!record) return; editingId = id; const fields = { editType:"registrationType", editName:"name", editTel:"tel", editEmail:"email", editCallStatus:"callStatus", editSalesperson:"salesperson", editAdultCount:"adultCount", editChildCount:"childCount", editSlot:"slot", editOwnerBrand:"ownerBrand", editCompany:"company", editBooth:"booth", editReferrerName:"referrerName", editHomeInterest:"homeInterest", editHomeStage:"homeStage", editBrandAwareness:"brandAwareness", editContactPreference:"contactPreference", editAddress:"address", editRemarks:"remarks", editAdminMemo:"adminMemo" }; Object.entries(fields).forEach(([field, key]) => $(field).value = record[key] ?? ""); if (!record.adultCount && record.partySize) $("editAdultCount").value = record.partySize; $("editErr").style.display = "none"; $("editDialog").showModal(); }
   $("editCancel").onclick = () => $("editDialog").close();
