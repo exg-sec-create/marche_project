@@ -47,6 +47,9 @@
   .qr-dialog-code { display:inline-block; min-width:220px; min-height:220px; padding:14px; background:#fff; border:1px solid var(--line); border-radius:14px; }
   .qr-dialog-code img, .qr-dialog-code canvas { display:block; margin:auto; }
   .qr-dialog-link { display:block; width:max-content; margin:12px auto 0; color:var(--blue); font-size:.88rem; }
+  .qr-checkin-status { margin:14px 0 0; padding:10px 12px; border-radius:10px; background:#f4f7f8; color:var(--muted); font-size:.86rem; }
+  .qr-checkin-status.done { background:#e2f5e6; color:#166534; font-weight:700; }
+  .btn.checkin { background:#16803c; }
   .login { max-width:380px; margin:44px auto; } .login input { margin-bottom:10px; }
   @media (max-width: 760px) { .stats { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } }
 </style>
@@ -75,7 +78,7 @@
   </div>
   <div class="slotgrid" id="slotGrid"></div>
   <div class="toolbar"><input id="search" placeholder="名前・電話・メールで検索" /><button class="btn" id="csv">CSVを書き出す</button></div>
-  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>状態</th><th>受付時刻</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
 </main>
 
 <dialog id="editDialog">
@@ -114,7 +117,8 @@
   <p class="qr-dialog-meta" id="qrDialogMeta"></p>
   <div class="qr-dialog-code" id="qrDialogCode" aria-label="受付用QRコード"></div>
   <a class="qr-dialog-link" id="qrDialogLink" href="#" target="_blank" rel="noopener">申請者用チケット画面を開く</a>
-  <div class="dialog-actions"><button type="button" class="btn" id="qrDialogClose">閉じる</button></div>
+  <p class="qr-checkin-status" id="qrCheckinStatus" aria-live="polite"></p>
+  <div class="dialog-actions"><button type="button" class="act" id="qrDialogClose">閉じる</button><button type="button" class="btn checkin" id="qrCheckinButton">受付完了</button></div>
 </dialog>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -134,6 +138,7 @@
   ]);
   let all = [], unsub = null;
   let editingId = null;
+  let qrDialogId = null;
   const pendingQrEmails = new Set();
 
   (window.TIME_SLOTS || []).forEach(slot => $("editSlot").add(new Option(slot, slot)));
@@ -161,7 +166,7 @@
     const grid = $("slotGrid"); grid.innerHTML = "";
     (window.TIME_SLOTS || []).forEach(slot => { const records = all.filter(record => record.slot === slot); const checkedIn = records.filter(record => record.checkedIn).length; const card = document.createElement("div"); card.className = "slotcard"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${records.length} ・ 受付 ${checkedIn}</div>`; grid.appendChild(card); });
     const rows = all.filter(record => !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query)));
-    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const isSending = pendingQrEmails.has(record.id); const mailAction = `<button class="act mail" data-mail="${record.id}" title="登録メールアドレスへQRチケットを再送" ${isSending ? "disabled" : ""}>${isSending ? "送信中…" : "QR再送"}</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${state}</td><td>${checkedInAt}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${mailAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
+    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const isSending = pendingQrEmails.has(record.id); const mailAction = `<button class="act mail" data-mail="${record.id}" title="登録メールアドレスへQRチケットを再送" ${isSending ? "disabled" : ""}>${isSending ? "送信中…" : "QR再送"}</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${mailAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
     $("rows").querySelectorAll("[data-un]").forEach(button => button.onclick = () => setCheck(button.dataset.un, false));
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
@@ -172,6 +177,7 @@
   function openQrDialog(id) {
     const record = all.find(item => item.id === id);
     if (!record) return;
+    qrDialogId = id;
     const ticketUrl = new URL("ticket.html", location.href);
     ticketUrl.search = new URLSearchParams({ id }).toString();
     $("qrDialogName").textContent = `${record.name || "名称未設定"} 様`;
@@ -179,8 +185,33 @@
     $("qrDialogLink").href = ticketUrl.href;
     $("qrDialogCode").replaceChildren();
     new QRCode($("qrDialogCode"), { text:ticketUrl.href, width:220, height:220, correctLevel:QRCode.CorrectLevel.M });
+    updateQrCheckinControls(record);
     $("qrDialog").showModal();
   }
+  function updateQrCheckinControls(record) {
+    const status = $("qrCheckinStatus"), button = $("qrCheckinButton");
+    status.classList.toggle("done", Boolean(record.checkedIn));
+    status.textContent = record.checkedIn
+      ? `✓ 受付済み${record.checkedInBy ? `（対応者：${record.checkedInBy}）` : ""}`
+      : "QRを読み取るか、このボタンから直接受付できます。";
+    button.hidden = Boolean(record.checkedIn);
+    button.disabled = false;
+    button.textContent = "受付完了";
+  }
+  $("qrCheckinButton").onclick = async () => {
+    const record = all.find(item => item.id === qrDialogId);
+    if (!record || record.checkedIn || !confirm(`${record.name || "名称未設定"} 様を受付完了にしますか？`)) return;
+    const button = $("qrCheckinButton"); button.disabled = true; button.textContent = "受付処理中…";
+    try {
+      await setCheck(record.id, true, "dashboard_qr");
+      record.checkedIn = true; record.checkedInBy = auth.currentUser?.email || "";
+      updateQrCheckinControls(record);
+    } catch (error) {
+      console.error("QR dialog check-in failed", error);
+      alert("受付処理に失敗しました。通信環境をご確認のうえ、もう一度お試しください。");
+      button.disabled = false; button.textContent = "受付完了";
+    }
+  };
   $("qrDialogClose").onclick = () => $("qrDialog").close();
   $("qrDialog").onclick = event => { if (event.target === $("qrDialog")) $("qrDialog").close(); };
   async function resendQrEmail(id) {
@@ -237,7 +268,21 @@
       alert(error.code === "permission-denied" ? "削除権限がありません。Firestore セキュリティルールが最新か、ログイン中のアカウントをご確認ください。" : "削除に失敗しました。通信環境をご確認のうえ、もう一度お試しください。");
     }
   }
-  async function setCheck(id, checkedIn) { await db.collection("registrations").doc(id).update({ checkedIn, checkedInAt: checkedIn ? firebase.firestore.FieldValue.serverTimestamp() : null, checkedInBy: checkedIn ? auth.currentUser?.email : null }); }
+  async function setCheck(id, checkedIn, method = "dashboard_manual") {
+    const handledBy = auth.currentUser?.email || "";
+    await db.collection("registrations").doc(id).update({
+      checkedIn,
+      checkedInAt: checkedIn ? firebase.firestore.FieldValue.serverTimestamp() : null,
+      checkedInBy: checkedIn ? handledBy : null,
+      checkedInMethod: checkedIn ? method : null,
+      checkInHistory: firebase.firestore.FieldValue.arrayUnion({
+        action: checkedIn ? "check_in" : "cancel",
+        at: firebase.firestore.Timestamp.now(),
+        by: handledBy,
+        method
+      })
+    });
+  }
   function openEditor(id) { const record = all.find(item => item.id === id); if (!record) return; editingId = id; const fields = { editType:"registrationType", editName:"name", editTel:"tel", editEmail:"email", editCallStatus:"callStatus", editSalesperson:"salesperson", editAdultCount:"adultCount", editChildCount:"childCount", editSlot:"slot", editOwnerBrand:"ownerBrand", editCompany:"company", editBooth:"booth", editReferrerName:"referrerName", editHomeInterest:"homeInterest", editHomeStage:"homeStage", editBrandAwareness:"brandAwareness", editContactPreference:"contactPreference", editAddress:"address", editRemarks:"remarks", editAdminMemo:"adminMemo" }; Object.entries(fields).forEach(([field, key]) => $(field).value = record[key] ?? ""); if (!record.adultCount && record.partySize) $("editAdultCount").value = record.partySize; $("editErr").style.display = "none"; $("editDialog").showModal(); }
   $("editCancel").onclick = () => $("editDialog").close();
   $("editForm").onsubmit = async event => {
@@ -271,7 +316,7 @@
       $("editErr").style.display = "block";
     } finally { save.disabled = false; }
   };
-  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "架電状況", "営業担当者", "メール", "資料送付先住所", "備考", "運営メモ", "大人人数", "子ども人数（小学生以下）", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "ネックストラップ", "受付", "受付時刻"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, callStatusLabel(record.callStatus), record.salesperson, record.email, record.address, record.remarks, record.adminMemo, record.adultCount || record.partySize, record.childCount, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
+  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "架電状況", "営業担当者", "メール", "資料送付先住所", "備考", "運営メモ", "大人人数", "子ども人数（小学生以下）", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "ネックストラップ", "受付", "受付時刻", "受付対応者"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, callStatusLabel(record.callStatus), record.salesperson, record.email, record.address, record.remarks, record.adminMemo, record.adultCount || record.partySize, record.childCount, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : "", record.checkedInBy || ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
   function fmt(date) { return date.toLocaleString("ja-JP", { month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit" }); }
   function typeLabel(type) { return ({ owner:"オーナー様", general:"一般", referral:"紹介", vendor:"業者" })[type] || "一般"; }
   function homeInterestLabel(value) { return ({ interested:"興味あり", not_interested:"興味なし" })[value] || ""; }
