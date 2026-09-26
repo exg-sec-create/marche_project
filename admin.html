@@ -711,8 +711,8 @@
   function brandAwarenessLabel(value) { return ({ exceed_home:"EXCEED HOME", besto_haus:"BESTO HAUS", pg_house_yamagata:"PG HOUSE 山形", unsure:"まだわからない" })[value] || ""; }
   function ownerBrandLabel(value) { return ({ exceed_home:"EXCEED HOME", besto_haus:"BESTO HAUS", pg_house_yamagata:"PG HOUSE 山形", other:"その他" })[value] || ""; }
   function contactPreferenceLabel(value) { return ({ phone:"電話で話を聞きたい", email:"メールで情報を受け取りたい", mail:"資料を郵送してほしい", none:"今は案内を希望しない" })[value] || ""; }
-  function companyAwarenessLabel(value) { return ({ known:"知っている。", unknown:"知らない" })[value] || ""; }
-  function awarenessSourceLabel(value) { return ({ flyer:"チラシ", signboard:"看板", instagram:"インスタグラム", tiktok:"tiktok", poster:"ポスター", youtube:"YouTube（とが社長のガレージハウスch）", brand_car:"ブランドカー", line:"LINE", marche_2025:"2025マルシェ", yamagata_fireworks:"山形花火大会", montedio_yamagata:"モンテディオ山形", other:"その他" })[value] || ""; }
+  function companyAwarenessLabel(value) { return ({ known:"知っている", unknown:"知らない" })[value] || ""; }
+  function awarenessSourceLabel(value) { return ({ flyer:"チラシ", signboard:"看板", instagram:"インスタグラム", instagram_official:"インスタ（公式アカウント）", instagram_employee:"インスタ（社員アカウント）", tiktok:"tiktok", poster:"ポスター", youtube:"YouTube（とが社長のガレージハウスch）", youtube_recruitment:"YouTube（採用チャンネル）", brand_car:"ブランドカー", line:"LINE", marche_2025:"2025マルシェ", yamagata_fireworks:"山形花火大会", montedio_yamagata:"モンテディオ山形", other:"その他" })[value] || ""; }
   function callStatusLabel(value) { return ({ not_connected:"未通", connected:"通電" })[value] || ""; }
   function followUpStatus(record) { return record.followUpStatus || (record.homeInterest === "interested" && record.homeStage !== "already_built" ? "valid" : "invalid"); }
   function followUpStatusLabel(record) { return record.registrationType === "general" ? (followUpStatus(record) === "valid" ? "有効客" : "無効客") : ""; }
