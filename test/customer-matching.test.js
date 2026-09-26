@@ -28,3 +28,17 @@ test("duplicate top scores require review", () => {
   ];
   assert.equal(matching.matchState(registration, customers), "review");
 });
+
+test("imports handover, rank and after-project columns", () => {
+  const rows = matching.parseCsv("顧客ID,顧客名1氏名,引渡日,ランク,アフター案件あり\n1,山田太郎,2025/01/10,A,あり");
+  assert.deepEqual(matching.rowsToCustomers(rows)[0], {
+    customerId:"1", name1:"山田太郎", handoverDate:"2025/01/10", rank:"A", hasAfterProject:"あり"
+  });
+});
+
+test("omitted CSV columns do not become blank updates", () => {
+  const customer = matching.rowsToCustomers(matching.parseCsv("顧客ID,顧客名1氏名\n1,山田太郎"))[0];
+  assert.equal(Object.hasOwn(customer, "rank"), false);
+  assert.deepEqual(matching.customerChanges({ customerId:"1", name1:"山田太郎", rank:"A" }, customer), []);
+  assert.deepEqual(matching.customerChanges({ customerId:"1", name1:"旧姓" }, customer), ["name1"]);
+});

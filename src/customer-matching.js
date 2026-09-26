@@ -24,7 +24,9 @@
     oldAddress: ["旧住所"],
     newAddress: ["新住所"],
     remarks: ["備考"],
-    rank: ["ランク"]
+    handoverDate: ["引渡日", "引き渡し日", "お引渡日"],
+    rank: ["ランク"],
+    hasAfterProject: ["アフター案件あり", "アフター案件有り", "アフター案件", "アフター有無"]
   };
 
   function parseCsv(text) {
@@ -62,7 +64,8 @@
     return rows.slice(1).map(columns => {
       const value = key => indexes[key] >= 0 ? String(columns[indexes[key]] || "").trim() : "";
       const customer = {};
-      Object.keys(HEADER_ALIASES).forEach(key => { customer[key] = value(key); });
+      // 差分CSVにない列は返さず、既存値を空文字で上書きしない。
+      Object.keys(HEADER_ALIASES).forEach(key => { if (indexes[key] >= 0) customer[key] = value(key); });
       return customer;
     }).filter(customer => customer.customerId && customer.name1);
   }
@@ -99,5 +102,10 @@
     return top.score >= 100 && !tied ? "suggested" : "review";
   }
 
-  return { parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, matchState };
+  function customerChanges(existing, incoming) {
+    if (!existing) return Object.keys(incoming).filter(key => key !== "customerId");
+    return Object.keys(incoming).filter(key => key !== "customerId" && String(existing[key] ?? "") !== String(incoming[key] ?? ""));
+  }
+
+  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, matchState, customerChanges };
 });
