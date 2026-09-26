@@ -7,6 +7,7 @@
 
   const HEADER_ALIASES = {
     customerId: ["顧客ID", "顧客id"],
+    externalSystemId: ["案件ID", "案件Id", "案件id", "andpad_id", "ANDPAD_ID", "ANDPAD ID"],
     enabled: ["有効設定"],
     brand: ["ブランド"],
     office: ["担当拠点"],
