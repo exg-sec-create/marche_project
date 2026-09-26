@@ -84,6 +84,28 @@ https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 - 時間帯・定員: `TIME_SLOTS` / `SLOT_CAPACITY`。
 - 受付ページの修正: `checkin.html` を直接編集して push。QRが読めない時の名前検索→手動受付／取消も実装済み。
 
+## 受付後の LINE 紐付け QR
+
+受付カメラで来場者のQRを読み取り、顧客情報を確認した後に、LINE顧客CRMの案件紐付けQRを発行できます。APIキーをブラウザへ公開しないよう、外部APIへの通信は Firebase Functions の `lineLinkQr` が代理します。
+
+### 初回セットアップ
+
+1. 顧客CSVに `案件ID`、`andpad_id`、または `ANDPAD ID` 列を追加し、LINE顧客CRMの案件マスタに存在する `andpad_id` を入力して再取込します。案件IDがない来場者にはLINE登録ボタンは表示されません。
+2. Functions の依存パッケージをインストールします。
+   ```bash
+   cd functions && npm install && cd ..
+   ```
+3. LINE顧客CRMから発行されたAPIキーを Firebase Secret Manager に保存します（値はリポジトリや `firebase-config.js` に書かないでください）。
+   ```bash
+   npx firebase-tools functions:secrets:set LINE_CRM_API_KEY --project marche2026-86ab6
+   ```
+4. Functions をデプロイします。
+   ```bash
+   npx firebase-tools deploy --only functions:lineLinkQr --project marche2026-86ab6
+   ```
+
+受付完了画面の「確認してLINE登録へ」を押すとQRが表示されます。表示中は5秒間隔で読取状況を確認し、登録された続柄を画面に表示します。「完了」を押すかログアウトすると確認を停止します。
+
 ## 来場人数の保存項目
 来場者向けフォームでは、来場人数を次の2項目に分けて回答・保存します（業者用フォームでは空文字を保存します）。
 

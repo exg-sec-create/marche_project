@@ -48,6 +48,10 @@
     background:#fff; color:#18251f; font:inherit; font-size:1.05rem; font-weight:800; cursor:pointer;
     box-shadow:0 4px 12px rgba(0,0,0,.2); }
   .ok{background:#16a34a} .already{background:#d97706} .bad{background:#dc2626}
+  #lineQr { display:none; width:min(420px,100%); margin-top:14px; padding:18px; border-radius:16px; background:#fff; color:#18251f; }
+  #lineQr img { display:block; width:min(260px,80vw); height:auto; margin:10px auto; }
+  #lineQr .line-title { font-size:1.2rem; font-weight:800; }
+  #lineStatus { min-height:1.5em; margin-top:8px; font-weight:700; color:#166534; }
 </style>
 </head>
 <body>
@@ -82,6 +86,12 @@
   <div id="ovType"></div><div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div>
   <div class="sm" id="ovMsg"></div><div id="ovStrap"></div>
   <div id="ovCustomer"><div><small>引渡</small><strong id="ovHandover">—</strong></div><div><small>ランク</small><strong id="ovRank">—</strong></div><div><small>アフター</small><strong id="ovAfter">—</strong></div></div>
+  <div id="lineQr">
+    <div class="line-title" id="lineTitle">LINE登録</div>
+    <div>お客様のスマートフォンで読み取ってください</div>
+    <img id="lineQrImage" alt="LINE紐付け用QRコード" />
+    <div id="lineExpiry"></div><div id="lineUses"></div><div id="lineStatus" role="status"></div>
+  </div>
   <button type="button" id="ovOk">確認（次の読み取りへ）</button>
 </div>
 
@@ -97,6 +107,7 @@
   db.enablePersistence({ synchronizeTabs:true }).catch(()=>{}); // 会場Wi-Fi対策
   const $ = id => document.getElementById(id);
   let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[], customers=[];
+  let feedbackResult=null, lineToken="", linePollTimer=null, lastLineUses=0;
 
   $("loginBtn").onclick = async () => {
     $("loginErr").style.display="none";
@@ -113,6 +124,7 @@
       await warm(); await refresh(); startScanner();
     } else {
       $("loginBox").style.display="block"; $("scanBox").style.display="none";
+      stopLinePolling();
       if (scanner){ scanner.stop().catch(()=>{}); scanner=null; }
     }
   });
@@ -206,6 +218,7 @@
     return null;
   }
   function show(r){
+    feedbackResult=r; stopLinePolling();
     const ov=$("ov"); ov.className="";
     if (r.status==="ok"){ ov.classList.add("ok"); $("ovIc").textContent="✓"; $("ovName").textContent=r.name+" 様"; $("ovMsg").textContent="受付完了 ・ "+(r.slot||""); beep(880); vib([120]); }
     else if (r.status==="already"){ ov.classList.add("already"); $("ovIc").textContent="!"; $("ovName").textContent=r.name+" 様"; $("ovMsg").textContent="すでに受付済みです"; beep(440); vib([80,60,80]); }
@@ -221,13 +234,61 @@
     $("ovHandover").textContent = customer?.handoverDate || "—";
     $("ovRank").textContent = customer?.rank || "—";
     $("ovAfter").textContent = customer?.hasAfterProject || "—";
+    $("lineQr").style.display="none";
+    $("ovOk").disabled=false;
+    $("ovOk").textContent = r.status === "ok" && customer?.externalSystemId
+      ? "確認してLINE登録へ" : "確認（次の読み取りへ）";
     ov.style.display="flex";
     $("ovOk").focus();
   }
   function hideFeedback(){
-    $("ov").style.display="none"; busy=false;
+    stopLinePolling(); $("ov").style.display="none"; busy=false;
   }
-  $("ovOk").onclick=hideFeedback;
+  $("ovOk").onclick=async () => {
+    if ($("lineQr").style.display === "block" || feedbackResult?.status !== "ok" || !feedbackResult?.customer?.externalSystemId) return hideFeedback();
+    await issueLineQr(feedbackResult.customer.externalSystemId);
+  };
+  function functionUrl(){
+    return "https://asia-northeast1-" + firebase.app().options.projectId + ".cloudfunctions.net/lineLinkQr";
+  }
+  async function authorizedFetch(url, options={}){
+    const idToken=await user.getIdToken();
+    const response=await fetch(url, { ...options, headers:{ "Authorization":"Bearer "+idToken, "Content-Type":"application/json", ...(options.headers||{}) } });
+    const body=await response.json().catch(()=>({ detail:"応答を読み取れませんでした" }));
+    if(!response.ok) throw new Error(typeof body.detail === "string" ? body.detail : "LINE連携に失敗しました");
+    return body;
+  }
+  async function issueLineQr(externalSystemId){
+    const button=$("ovOk"); button.disabled=true; button.textContent="QRを発行中…";
+    try {
+      const data=await authorizedFetch(functionUrl()+"/", { method:"POST", body:JSON.stringify({ externalSystemId }) });
+      lineToken=data.token; lastLineUses=data.uses||0;
+      $("lineTitle").textContent=(data.externalName||"お客様")+" LINE登録";
+      $("lineQrImage").src=data.qrDataUrl;
+      $("lineExpiry").textContent="有効期限: "+new Date(data.expireAt).toLocaleString("ja-JP", { timeZone:"Asia/Tokyo" });
+      $("lineUses").textContent="読取 "+lastLineUses+" / "+data.maxUses;
+      $("lineStatus").textContent=""; $("lineQr").style.display="block";
+      $("ovCustomer").style.display="none"; button.textContent="完了（次の読み取りへ）"; button.disabled=false;
+      pollLineStatus();
+    } catch(error) {
+      alert("LINE登録QRを発行できませんでした。\n"+error.message);
+      button.textContent="確認してLINE登録へ"; button.disabled=false;
+    }
+  }
+  async function pollLineStatus(){
+    if(!lineToken) return;
+    try {
+      const data=await authorizedFetch(functionUrl()+"/"+encodeURIComponent(lineToken));
+      $("lineUses").textContent="読取 "+data.uses+" / "+data.maxUses;
+      if(data.uses>lastLineUses){
+        const role={self:"ご本人",spouse:"配偶者",family:"ご家族",other:"その他"}[data.usedBy?.at(-1)?.householdRole]||"お客様";
+        $("lineStatus").textContent="✓ 登録されました（"+role+"）"; beep(1046); vib([100,50,100]);
+      }
+      lastLineUses=data.uses;
+    } catch(error){ $("lineStatus").textContent="状況確認に失敗しました。再試行します。"; }
+    linePollTimer=setTimeout(pollLineStatus,5000);
+  }
+  function stopLinePolling(){ if(linePollTimer) clearTimeout(linePollTimer); linePollTimer=null; lineToken=""; }
   function beep(f){ if(!audioCtx) return; try{ const o=audioCtx.createOscillator(),g=audioCtx.createGain();
     o.frequency.value=f; o.connect(g); g.connect(audioCtx.destination);
     g.gain.setValueAtTime(.15,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+.25);

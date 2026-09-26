@@ -36,6 +36,11 @@ test("imports handover, rank and after-project columns", () => {
   });
 });
 
+test("imports LINE CRM project id aliases", () => {
+  const rows = matching.parseCsv("顧客ID,顧客名1氏名,andpad_id\nC-1,山田 太郎,3409347\n");
+  assert.equal(matching.rowsToCustomers(rows)[0].externalSystemId, "3409347");
+});
+
 test("automatically resolves the best candidate while preserving suggested state", () => {
   const registration = { name:"山田太郎", tel:"09012345678" };
   const customers = [
