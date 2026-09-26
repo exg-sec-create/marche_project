@@ -29,7 +29,6 @@
   .strap::before { content:""; width:12px; height:12px; border-radius:50%; background:var(--strap-color); border:1px solid #0002; box-shadow:inset 0 0 0 1px #fff5; }
   .act { border:1px solid var(--line); background:#fff; border-radius:8px; padding:6px 10px; font-size:.8rem; cursor:pointer; font-family:inherit; }
   .act.qr { border-color:#78b8a0; color:#176149; background:#f2fbf7; }
-  .act.mail { border-color:#9fc4e4; color:var(--blue); background:#f5faff; }
   .act:disabled { cursor:not-allowed; opacity:.58; }
   .act.delete { border-color:#efb4b4; color:#a12020; }
   .actions { display:flex; gap:6px; white-space:nowrap; }
@@ -139,7 +138,6 @@
   let all = [], unsub = null;
   let editingId = null;
   let qrDialogId = null;
-  const pendingQrEmails = new Set();
 
   (window.TIME_SLOTS || []).forEach(slot => $("editSlot").add(new Option(slot, slot)));
 
@@ -166,12 +164,11 @@
     const grid = $("slotGrid"); grid.innerHTML = "";
     (window.TIME_SLOTS || []).forEach(slot => { const records = all.filter(record => record.slot === slot); const checkedIn = records.filter(record => record.checkedIn).length; const card = document.createElement("div"); card.className = "slotcard"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${records.length} ・ 受付 ${checkedIn}</div>`; grid.appendChild(card); });
     const rows = all.filter(record => !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query)));
-    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const isSending = pendingQrEmails.has(record.id); const mailAction = `<button class="act mail" data-mail="${record.id}" title="登録メールアドレスへQRチケットを再送" ${isSending ? "disabled" : ""}>${isSending ? "送信中…" : "QR再送"}</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${mailAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
+    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
     $("rows").querySelectorAll("[data-un]").forEach(button => button.onclick = () => setCheck(button.dataset.un, false));
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
     $("rows").querySelectorAll("[data-qr]").forEach(button => button.onclick = () => openQrDialog(button.dataset.qr));
-    $("rows").querySelectorAll("[data-mail]").forEach(button => button.onclick = () => resendQrEmail(button.dataset.mail));
     $("rows").querySelectorAll("[data-delete]").forEach(button => button.onclick = () => deleteRegistration(button.dataset.delete));
   }
   function openQrDialog(id) {
@@ -214,48 +211,6 @@
   };
   $("qrDialogClose").onclick = () => $("qrDialog").close();
   $("qrDialog").onclick = event => { if (event.target === $("qrDialog")) $("qrDialog").close(); };
-  async function resendQrEmail(id) {
-    const record = all.find(item => item.id === id);
-    if (!record || pendingQrEmails.has(id)) return;
-    if (!record.email) { alert("送信先メールアドレスが登録されていません。先に登録内容を編集してください。"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(record.email)) { alert("登録されているメールアドレスの形式が正しくありません。先に登録内容を編集してください。"); return; }
-    if (!confirm(`${record.name || "名称未設定"} 様のQRチケットを\n${record.email}\nへ再送します。よろしいですか？`)) return;
-
-    pendingQrEmails.add(id);
-    render();
-    const ticketUrl = new URL("ticket.html", location.href);
-    ticketUrl.search = new URLSearchParams({ id }).toString();
-    const eventName = `${E.name || "イベント"} ${E.year || ""}`.trim();
-    const greeting = `${record.name || "お客様"} 様`;
-    const details = [E.dateLabel && `開催日：${E.dateLabel} ${E.dow || ""}`.trim(), E.timeLabel && `時間：${E.timeLabel}`, E.venue && `会場：${E.venue}`].filter(Boolean);
-    const textBody = `${greeting}\n\n${eventName} のQRチケットを再送いたします。\n当日は以下のURLからQRチケットを表示し、受付でご提示ください。\n\n${ticketUrl.href}\n\n${details.join("\n")}\n\n※このメールは運営スタッフの操作により送信されています。`;
-    const htmlBody = `<p>${esc(greeting)}</p><p>${esc(eventName)} のQRチケットを再送いたします。<br>当日は下のボタンからQRチケットを表示し、受付でご提示ください。</p><p><a href="${esc(ticketUrl.href)}" style="display:inline-block;padding:12px 20px;border-radius:8px;background:#1a5fa8;color:#fff;text-decoration:none;font-weight:bold">QRチケットを表示</a></p><p>${details.map(esc).join("<br>")}</p><p style="color:#71808a;font-size:12px">※このメールは運営スタッフの操作により送信されています。</p>`;
-    try {
-      const mailRef = db.collection("mail").doc();
-      const registrationRef = db.collection("registrations").doc(id);
-      const batch = db.batch();
-      batch.set(mailRef, {
-        to: [record.email.trim()],
-        message: { subject:`【${eventName}】QRチケット再送のお知らせ`, text:textBody, html:htmlBody },
-        registrationId:id,
-        requestedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        requestedBy:auth.currentUser?.email || ""
-      });
-      batch.update(registrationRef, {
-        qrEmailLastRequestedAt:firebase.firestore.FieldValue.serverTimestamp(),
-        qrEmailLastRequestedBy:auth.currentUser?.email || "",
-        qrEmailRequestCount:firebase.firestore.FieldValue.increment(1)
-      });
-      await batch.commit();
-      alert(`${record.email} へのQRチケット再送を受け付けました。`);
-    } catch (error) {
-      console.error("QR email enqueue failed", error);
-      alert(error.code === "permission-denied" ? "メール送信権限がありません。Firestore セキュリティルールが最新かご確認ください。" : "QRチケットの再送に失敗しました。通信環境をご確認のうえ、もう一度お試しください。");
-    } finally {
-      pendingQrEmails.delete(id);
-      render();
-    }
-  }
   function canDelete() { return DELETE_ALLOWED_EMAILS.has((auth.currentUser?.email || "").toLowerCase()); }
   async function deleteRegistration(id) {
     if (!canDelete()) { alert("このアカウントには削除権限がありません。"); return; }
