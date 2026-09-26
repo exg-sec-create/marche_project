@@ -50,7 +50,40 @@
   .qr-checkin-status.done { background:#e2f5e6; color:#166534; font-weight:700; }
   .btn.checkin { background:#16803c; }
   .login { max-width:380px; margin:44px auto; } .login input { margin-bottom:10px; }
+  .page-tabs { display:flex; gap:6px; margin:0 0 20px; padding:5px; width:max-content; max-width:100%; background:#e9f0f4; border-radius:12px; }
+  .page-tab { border:0; border-radius:9px; padding:10px 18px; background:transparent; color:var(--muted); font-family:inherit; font-size:.9rem; font-weight:700; cursor:pointer; }
+  .page-tab.active { background:#fff; color:var(--blue); box-shadow:0 2px 8px #17324b18; }
+  .tab-panel[hidden] { display:none; }
+  .analytics-head { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin-bottom:16px; }
+  .analytics-head h2 { margin:0 0 4px; color:var(--ink); font-size:1.45rem; }
+  .analytics-head p { margin:0; color:var(--muted); font-size:.88rem; }
+  .analytics-actions { display:flex; align-items:center; gap:8px; }
+  .analytics-actions select { width:auto; min-width:150px; padding:9px 34px 9px 12px; }
+  .analytics-actions .act { padding:9px 13px; }
+  .kpis { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:16px; }
+  .kpi { min-width:0; padding:16px; background:#fff; border:1px solid var(--line); border-radius:13px; box-shadow:0 4px 14px #17324b0b; }
+  .kpi .k-label { color:var(--muted); font-size:.76rem; font-weight:700; }
+  .kpi .k-value { margin:5px 0 1px; color:var(--ink); font-size:1.8rem; font-weight:800; line-height:1; }
+  .kpi .k-note { color:var(--muted); font-size:.72rem; }
+  .kpi.accent { background:linear-gradient(140deg,var(--blue),#277eaa); border-color:transparent; }
+  .kpi.accent * { color:#fff; }
+  .analytics-grid { display:grid; grid-template-columns:1.25fr 1fr; gap:14px; }
+  .analytics-card { padding:18px; background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:0 4px 16px #17324b0b; }
+  .analytics-card h3 { margin:0; font-size:1rem; color:var(--ink); }
+  .card-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; }
+  .card-heading small { color:var(--muted); }
+  .bar-row { display:grid; grid-template-columns:125px 1fr 46px; align-items:center; gap:10px; margin:11px 0; font-size:.82rem; }
+  .bar-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#40515c; }
+  .bar-track { height:10px; overflow:hidden; background:#edf2f4; border-radius:99px; }
+  .bar-fill { height:100%; min-width:0; border-radius:99px; background:linear-gradient(90deg,#2b789d,#4eabc1); }
+  .bar-fill.orange { background:linear-gradient(90deg,#e87920,#f3ad58); }
+  .bar-value { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
+  .insight { margin-top:14px; padding:12px 14px; background:#f2f8fa; border-left:3px solid var(--blue); border-radius:8px; color:#365263; font-size:.84rem; line-height:1.6; }
+  .empty-chart { padding:28px 8px; text-align:center; color:var(--muted); font-size:.85rem; }
+  @media print { body { background:#fff; } .login, .page-tabs, #logout, .analytics-actions { display:none!important; } #main { display:block!important; } #customerPanel { display:none!important; } #analyticsPanel { display:block!important; } .analytics-card,.kpi { box-shadow:none; break-inside:avoid; } }
   @media (max-width: 760px) { .stats { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } }
+  @media (max-width: 900px) { .kpis { grid-template-columns:repeat(3,1fr); } .analytics-grid { grid-template-columns:1fr; } }
+  @media (max-width: 560px) { .analytics-head { align-items:stretch; flex-direction:column; } .analytics-actions { justify-content:space-between; } .kpis { grid-template-columns:repeat(2,1fr); } .page-tabs { width:100%; } .page-tab { flex:1; padding:10px 8px; } .bar-row { grid-template-columns:105px 1fr 40px; } }
 </style>
 </head>
 <body>
@@ -64,9 +97,14 @@
 
 <main class="wrap" id="main" style="display:none">
   <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0">
-    <h1 id="title" style="margin:0;color:var(--blue)">来場管理</h1>
+    <h1 id="title" style="margin:0;color:var(--blue)">顧客管理</h1>
     <button class="act" id="logout">ログアウト</button>
   </div>
+  <nav class="page-tabs" aria-label="顧客管理メニュー" role="tablist">
+    <button class="page-tab active" id="customerTab" role="tab" aria-selected="true" aria-controls="customerPanel">顧客一覧</button>
+    <button class="page-tab" id="analyticsTab" role="tab" aria-selected="false" aria-controls="analyticsPanel">来場分析</button>
+  </nav>
+  <section id="customerPanel" class="tab-panel" role="tabpanel" aria-labelledby="customerTab">
   <div class="stats">
     <div class="stat"><div class="n" id="sTotal">0</div><div class="l">予約総数</div></div>
     <div class="stat"><div class="n" id="sOwner" style="color:var(--blue)">0</div><div class="l">オーナー様</div></div>
@@ -78,6 +116,26 @@
   <div class="slotgrid" id="slotGrid"></div>
   <div class="toolbar"><input id="search" placeholder="名前・電話・メールで検索" /><button class="btn" id="csv">CSVを書き出す</button></div>
   <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+  <section id="analyticsPanel" class="tab-panel" role="tabpanel" aria-labelledby="analyticsTab" hidden>
+    <div class="analytics-head"><div><h2>来場・マーケティング分析</h2><p id="analyticsSubtitle">イベント成果をリアルタイムに集計</p></div><div class="analytics-actions"><select id="analyticsScope" aria-label="集計対象"><option value="checkedIn">来場者のみ</option><option value="all">全予約者</option></select><button class="act" id="printReport">結果を印刷</button></div></div>
+    <div class="kpis">
+      <div class="kpi accent"><div class="k-label">来場組数</div><div class="k-value" id="aGroups">0</div><div class="k-note" id="aRate">来場率 0%</div></div>
+      <div class="kpi"><div class="k-label">来場者数</div><div class="k-value" id="aPeople">0</div><div class="k-note">大人＋子ども</div></div>
+      <div class="kpi"><div class="k-label">大人</div><div class="k-value" id="aAdults">0</div><div class="k-note">名</div></div>
+      <div class="kpi"><div class="k-label">子ども</div><div class="k-value" id="aChildren">0</div><div class="k-note">名（小学生以下）</div></div>
+      <div class="kpi"><div class="k-label">有効客</div><div class="k-value" id="aValid">0</div><div class="k-note" id="aValidRate">一般来場者の 0%</div></div>
+      <div class="kpi"><div class="k-label">無効客</div><div class="k-value" id="aInvalid">0</div><div class="k-note">一般来場者</div></div>
+    </div>
+    <div class="analytics-grid">
+      <article class="analytics-card"><div class="card-heading"><h3>時間帯別の受付数</h3><small>実際の受付時刻</small></div><div id="hourChart"></div><div class="insight" id="peakInsight">受付データが蓄積されると、ピーク時間を表示します。</div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>興味のあるブランド</h3><small>回答結果</small></div><div id="brandChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>来場者区分</h3><small>組数ベース</small></div><div id="typeChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>住まいづくりの検討状況</h3><small>一般のお客様</small></div><div id="stageChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>希望する案内方法</h3><small>次回アプローチ</small></div><div id="contactChart"></div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>予約時間帯別の来場実績</h3><small>予約 / 受付</small></div><div id="slotAnalytics"></div></article>
+    </div>
+  </section>
 </main>
 
 <dialog id="editDialog">
@@ -148,7 +206,7 @@
   };
   $("logout").onclick = () => auth.signOut();
   auth.onAuthStateChanged(user => {
-    if (user) { $("loginBox").style.display = "none"; $("main").style.display = "block"; $("title").textContent = `${E.name || ""} ${E.year || ""} 来場管理`; listen(); }
+    if (user) { $("loginBox").style.display = "none"; $("main").style.display = "block"; $("title").textContent = `${E.name || ""} ${E.year || ""} 顧客管理`; listen(); }
     else { $("loginBox").style.display = "block"; $("main").style.display = "none"; if (unsub) { unsub(); unsub = null; } }
   });
   function listen() { unsub = db.collection("registrations").orderBy("createdAt", "desc").onSnapshot(snapshot => { all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); render(); }, error => console.error(error)); }
@@ -170,7 +228,54 @@
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
     $("rows").querySelectorAll("[data-qr]").forEach(button => button.onclick = () => openQrDialog(button.dataset.qr));
     $("rows").querySelectorAll("[data-delete]").forEach(button => button.onclick = () => deleteRegistration(button.dataset.delete));
+    renderAnalytics();
   }
+  function selectTab(name) {
+    const analytics = name === "analytics";
+    $("customerPanel").hidden = analytics;
+    $("analyticsPanel").hidden = !analytics;
+    $("customerTab").classList.toggle("active", !analytics);
+    $("analyticsTab").classList.toggle("active", analytics);
+    $("customerTab").setAttribute("aria-selected", String(!analytics));
+    $("analyticsTab").setAttribute("aria-selected", String(analytics));
+    if (analytics) renderAnalytics();
+  }
+  $("customerTab").onclick = () => selectTab("customer");
+  $("analyticsTab").onclick = () => selectTab("analytics");
+  $("analyticsScope").onchange = renderAnalytics;
+  $("printReport").onclick = () => window.print();
+
+  function renderAnalytics() {
+    const checkedIn = all.filter(record => record.checkedIn);
+    const records = $("analyticsScope").value === "all" ? all : checkedIn;
+    const general = records.filter(record => record.registrationType === "general");
+    const adults = records.reduce((sum, record) => sum + countValue(record.adultCount || record.partySize), 0);
+    const children = records.reduce((sum, record) => sum + countValue(record.childCount), 0);
+    const valid = general.filter(record => followUpStatus(record) === "valid").length;
+    $("aGroups").textContent = records.length.toLocaleString("ja-JP");
+    $("aPeople").textContent = (adults + children).toLocaleString("ja-JP");
+    $("aAdults").textContent = adults.toLocaleString("ja-JP");
+    $("aChildren").textContent = children.toLocaleString("ja-JP");
+    $("aValid").textContent = valid.toLocaleString("ja-JP");
+    $("aInvalid").textContent = (general.length - valid).toLocaleString("ja-JP");
+    $("aRate").textContent = `来場率 ${all.length ? Math.round(checkedIn.length / all.length * 100) : 0}%（予約 ${all.length}組）`;
+    $("aValidRate").textContent = `一般${$("analyticsScope").value === "all" ? "予約" : "来場"}者の ${general.length ? Math.round(valid / general.length * 100) : 0}%`;
+    $("analyticsSubtitle").textContent = `${E.name || "イベント"} ${E.dateLabel || ""}｜最終更新 ${new Date().toLocaleTimeString("ja-JP", { hour:"2-digit", minute:"2-digit" })}`;
+
+    const hours = checkedIn.reduce((counts, record) => { const date = record.checkedInAt?.toDate?.(); if (date) { const key = `${String(date.getHours()).padStart(2,"0")}:00`; counts[key] = (counts[key] || 0) + 1; } return counts; }, {});
+    renderBars("hourChart", Object.entries(hours).sort(([a], [b]) => a.localeCompare(b)), "orange");
+    const peak = Object.entries(hours).sort((a,b) => b[1] - a[1])[0];
+    $("peakInsight").textContent = peak ? `受付のピークは ${peak[0]}〜${String(Number(peak[0].slice(0,2)) + 1).padStart(2,"0")}:00（${peak[1]}組）です。人員配置や次回の集客施策にご活用ください。` : "受付データが蓄積されると、ピーク時間を表示します。";
+    renderBars("brandChart", aggregate(general, record => brandAwarenessLabel(record.brandAwareness) || "未回答"));
+    renderBars("typeChart", aggregate(records, record => typeLabel(record.registrationType)));
+    renderBars("stageChart", aggregate(general, record => homeStageLabel(record.homeStage) || "未回答"), "orange");
+    renderBars("contactChart", aggregate(general, record => contactPreferenceLabel(record.contactPreference) || "未回答"));
+    const slots = (window.TIME_SLOTS || []).map(slot => ({ label:slot, reserved:all.filter(record => record.slot === slot).length, arrived:checkedIn.filter(record => record.slot === slot).length }));
+    $("slotAnalytics").innerHTML = slots.length ? slots.map(item => `<div class="bar-row"><span class="bar-label" title="${esc(item.label)}">${esc(item.label)}</span><div class="bar-track"><div class="bar-fill orange" style="width:${item.reserved ? item.arrived / item.reserved * 100 : 0}%"></div></div><span class="bar-value">${item.arrived}/${item.reserved}</span></div>`).join("") : '<div class="empty-chart">時間帯データがありません</div>';
+  }
+  function countValue(value) { const number = parseInt(String(value ?? "").match(/\d+/)?.[0] || "0", 10); return Number.isFinite(number) ? number : 0; }
+  function aggregate(records, labeler) { const counts = {}; records.forEach(record => { const label = labeler(record); counts[label] = (counts[label] || 0) + 1; }); return Object.entries(counts).sort((a,b) => b[1] - a[1]); }
+  function renderBars(id, entries, color = "") { const target = $(id); if (!entries.length) { target.innerHTML = '<div class="empty-chart">対象データがありません</div>'; return; } const max = Math.max(...entries.map(([, value]) => value), 1); target.innerHTML = entries.map(([label, value]) => `<div class="bar-row"><span class="bar-label" title="${esc(label)}">${esc(label)}</span><div class="bar-track"><div class="bar-fill ${color}" style="width:${value / max * 100}%"></div></div><span class="bar-value">${value}組</span></div>`).join(""); }
   function openQrDialog(id) {
     const record = all.find(item => item.id === id);
     if (!record) return;
