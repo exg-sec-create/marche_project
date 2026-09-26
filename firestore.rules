@@ -9,6 +9,13 @@ service cloud.firestore {
       allow delete: if canDeleteRegistration();
     }
 
+    // 既存顧客マスターは、認証済み運営スタッフだけが参照・登録できます。
+    // 申込フォームなど、未認証の公開画面からはアクセスできません。
+    match /customerMasters/{customerId} {
+      allow read, create, update: if isStaff();
+      allow delete: if false;
+    }
+
     function isStaff() {
       return request.auth != null;
     }
