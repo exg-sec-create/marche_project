@@ -141,7 +141,13 @@
     if (!snap.exists) return {status:"notfound"};
     const d = snap.data();
     if (d.checkedIn) return {status:"already", name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus};
-    try { await ref.update({ checkedIn:true, checkedInAt:firebase.firestore.FieldValue.serverTimestamp(), checkedInBy:user.email }); }
+    try { await ref.update({
+      checkedIn:true,
+      checkedInAt:firebase.firestore.FieldValue.serverTimestamp(),
+      checkedInBy:user.email,
+      checkedInMethod:"scanner",
+      checkInHistory:firebase.firestore.FieldValue.arrayUnion({ action:"check_in", at:firebase.firestore.Timestamp.now(), by:user.email, method:"scanner" })
+    }); }
     catch(e){ return {status:"error"}; }
     return {status:"ok", name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus};
   }
@@ -167,7 +173,9 @@
   async function manualSet(id,val){
     await db.collection("registrations").doc(id).update({
       checkedIn:val, checkedInAt: val?firebase.firestore.FieldValue.serverTimestamp():null,
-      checkedInBy: val?user.email:null });
+      checkedInBy: val?user.email:null,
+      checkedInMethod: val?"scanner_manual":null,
+      checkInHistory:firebase.firestore.FieldValue.arrayUnion({ action:val?"check_in":"cancel", at:firebase.firestore.Timestamp.now(), by:user.email, method:"scanner_manual" }) });
     const r = cache.find(x=>x.id===id); if(r) r.checkedIn=val;
     $("q").dispatchEvent(new Event("input")); refresh();
   }
