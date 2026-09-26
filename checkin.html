@@ -40,6 +40,10 @@
     background:#fff; color:#18251f; font-size:1.25rem; font-weight:800; box-shadow:0 5px 16px rgba(0,0,0,.22); }
   #ovStrap::before { content:""; width:24px; height:24px; flex:none; border-radius:50%; background:var(--strap-color);
     border:1px solid #0002; box-shadow:inset 0 0 0 2px #fff7; }
+  #ovCustomer { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; width:min(520px,100%); margin-top:14px; }
+  #ovCustomer div { padding:10px 8px; border-radius:10px; background:#fff; color:#18251f; box-shadow:0 4px 12px rgba(0,0,0,.16); }
+  #ovCustomer small { display:block; margin-bottom:3px; color:#64727c; font-size:.7rem; font-weight:700; }
+  #ovCustomer strong { overflow-wrap:anywhere; font-size:1rem; }
   #ovOk { min-width:180px; margin-top:28px; padding:13px 28px; border:2px solid #fff; border-radius:12px;
     background:#fff; color:#18251f; font:inherit; font-size:1.05rem; font-weight:800; cursor:pointer;
     box-shadow:0 4px 12px rgba(0,0,0,.2); }
@@ -76,7 +80,9 @@
 <!-- フィードバック -->
 <div id="ov" role="dialog" aria-modal="true" aria-live="assertive">
   <div id="ovType"></div><div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div>
-  <div class="sm" id="ovMsg"></div><div id="ovStrap"></div><button type="button" id="ovOk">確認（次の読み取りへ）</button>
+  <div class="sm" id="ovMsg"></div><div id="ovStrap"></div>
+  <div id="ovCustomer"><div><small>引渡</small><strong id="ovHandover">—</strong></div><div><small>ランク</small><strong id="ovRank">—</strong></div><div><small>アフター</small><strong id="ovAfter">—</strong></div></div>
+  <button type="button" id="ovOk">確認（次の読み取りへ）</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -84,12 +90,13 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
+<script src="src/customer-matching.js"></script>
 <script>
   firebase.initializeApp(window.firebaseConfig);
   const auth = firebase.auth(), db = firebase.firestore();
   db.enablePersistence({ synchronizeTabs:true }).catch(()=>{}); // 会場Wi-Fi対策
   const $ = id => document.getElementById(id);
-  let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[];
+  let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[], customers=[];
 
   $("loginBtn").onclick = async () => {
     $("loginErr").style.display="none";
@@ -110,8 +117,13 @@
     }
   });
 
-  async function warm(){ try { const s = await db.collection("registrations").get();
-    cache = s.docs.map(d=>({id:d.id,...d.data()})); } catch(_){} }
+  async function warm(){ try {
+    const [registrations, customerMasters] = await Promise.all([
+      db.collection("registrations").get(), db.collection("customerMasters").get()
+    ]);
+    cache = registrations.docs.map(d=>({id:d.id,...d.data()}));
+    customers = customerMasters.docs.map(d=>({customerId:d.id,...d.data()}));
+  } catch(_){} }
   async function refresh(){ try {
     const s = await db.collection("registrations").where("checkedIn","==",true).get();
     $("count").textContent = "受付 " + s.size + " 件"; } catch(_){}
@@ -138,7 +150,8 @@
     let snap; try { snap = await ref.get(); } catch(e){ return {status:"error"}; }
     if (!snap.exists) return {status:"notfound"};
     const d = snap.data();
-    if (d.checkedIn) return {status:"already", name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus};
+    const result = () => ({ name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus, customer:CustomerMatching.resolveCustomer(d, customers) });
+    if (d.checkedIn) return {status:"already", ...result()};
     try { await ref.update({
       checkedIn:true,
       checkedInAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -147,7 +160,7 @@
       checkInHistory:firebase.firestore.FieldValue.arrayUnion({ action:"check_in", at:firebase.firestore.Timestamp.now(), by:user.email, method:"scanner" })
     }); }
     catch(e){ return {status:"error"}; }
-    return {status:"ok", name:d.name, slot:d.slot, registrationType:d.registrationType, ownerBrand:d.ownerBrand, homeInterest:d.homeInterest, homeStage:d.homeStage, followUpStatus:d.followUpStatus};
+    return {status:"ok", ...result()};
   }
 
   // --- 手動受付・修正 ---
@@ -203,6 +216,11 @@
     const strap=neckStrapInfo(r), strapEl=$("ovStrap");
     strapEl.style.display=strap ? "flex" : "none";
     if(strap){ strapEl.textContent="ネックストラップ："+strap.label; strapEl.style.setProperty("--strap-color",strap.color); }
+    const customer = r.customer;
+    $("ovCustomer").style.display = customer ? "grid" : "none";
+    $("ovHandover").textContent = customer?.handoverDate || "—";
+    $("ovRank").textContent = customer?.rank || "—";
+    $("ovAfter").textContent = customer?.hasAfterProject || "—";
     ov.style.display="flex";
     $("ovOk").focus();
   }

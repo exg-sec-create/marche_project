@@ -24,7 +24,7 @@
     oldAddress: ["旧住所"],
     newAddress: ["新住所"],
     remarks: ["備考"],
-    handoverDate: ["引渡日", "引き渡し日", "お引渡日"],
+    handoverDate: ["引渡", "引渡日", "引き渡し日", "お引渡日"],
     rank: ["ランク"],
     hasAfterProject: ["アフター案件あり", "アフター案件有り", "アフター案件", "アフター有無"]
   };
@@ -102,10 +102,17 @@
     return top.score >= 100 && !tied ? "suggested" : "review";
   }
 
+  // 担当者が確定した顧客を優先し、未確定の場合も最上位候補を自動的に利用する。
+  // matchState は未確定のままなので、画面には「自動候補」「要確認」が残る。
+  function resolveCustomer(registration, customers) {
+    const confirmed = customers.find(customer => customer.customerId === registration.matchedCustomerId);
+    return confirmed || findCandidates(registration, customers, 1)[0]?.customer || null;
+  }
+
   function customerChanges(existing, incoming) {
     if (!existing) return Object.keys(incoming).filter(key => key !== "customerId");
     return Object.keys(incoming).filter(key => key !== "customerId" && String(existing[key] ?? "") !== String(incoming[key] ?? ""));
   }
 
-  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, matchState, customerChanges };
+  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, matchState, resolveCustomer, customerChanges };
 });

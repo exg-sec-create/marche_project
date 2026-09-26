@@ -30,10 +30,30 @@ test("duplicate top scores require review", () => {
 });
 
 test("imports handover, rank and after-project columns", () => {
-  const rows = matching.parseCsv("顧客ID,顧客名1氏名,引渡日,ランク,アフター案件あり\n1,山田太郎,2025/01/10,A,あり");
+  const rows = matching.parseCsv("顧客ID,顧客名1氏名,引渡,ランク,アフター案件あり\n1,山田太郎,2025/01/10,A,あり");
   assert.deepEqual(matching.rowsToCustomers(rows)[0], {
     customerId:"1", name1:"山田太郎", handoverDate:"2025/01/10", rank:"A", hasAfterProject:"あり"
   });
+});
+
+test("automatically resolves the best candidate while preserving suggested state", () => {
+  const registration = { name:"山田太郎", tel:"09012345678" };
+  const customers = [
+    { customerId:"other", name1:"山田太郎", tel1:"08000000000" },
+    { customerId:"best", name1:"別の人", tel1:"090-1234-5678" }
+  ];
+  assert.equal(matching.resolveCustomer(registration, customers).customerId, "best");
+  assert.equal(matching.matchState(registration, customers), "suggested");
+});
+
+test("manual match overrides the automatic candidate", () => {
+  const registration = { name:"山田太郎", tel:"09012345678", matchedCustomerId:"manual" };
+  const customers = [
+    { customerId:"auto", name1:"山田太郎", tel1:"09012345678" },
+    { customerId:"manual", name1:"手動選択", tel1:"" }
+  ];
+  assert.equal(matching.resolveCustomer(registration, customers).customerId, "manual");
+  assert.equal(matching.matchState(registration, customers), "confirmed");
 });
 
 test("omitted CSV columns do not become blank updates", () => {
