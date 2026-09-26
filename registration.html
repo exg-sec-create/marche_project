@@ -364,7 +364,9 @@
         }
       }
       const ref = await db.collection("registrations").add({
-          ...data, checkedIn:false, checkedInAt:null, checkedInBy:null,
+          ...data,
+          checkedIn:false, checkedInAt:null, checkedInBy:null,
+          eventParticipated:false, eventParticipatedAt:null, eventParticipatedBy:null,
         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
       });
       renderTicket(ref.id, data);

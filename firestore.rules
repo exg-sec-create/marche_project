@@ -50,7 +50,9 @@ service cloud.firestore {
               : d.adultCount in ['1', '2', '3', '4', '5', '6+']
                 && d.childCount in ['0', '1', '2', '3', '4', '5', '6+'])
           && d.checkedIn == false
-          && d.checkedInAt == null;
+          && d.checkedInAt == null
+          && d.eventParticipated == false
+          && d.eventParticipatedAt == null;
     }
   }
 }
