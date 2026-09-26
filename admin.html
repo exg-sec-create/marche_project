@@ -6,17 +6,17 @@
 <title>運営ダッシュボード</title>
 <link rel="stylesheet" href="styles.css" />
 <style>
-  .wrap { max-width: 1080px; }
+  .wrap { max-width: 1280px; }
   .stats { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin:4px 0 18px; }
   .stat { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center; }
   .stat .n { font-size:1.8rem; font-weight:800; } .stat .l { font-size:.78rem; color:var(--muted); }
   .slotgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:18px; }
   .slotcard { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
   .slotcard .s { font-weight:700; font-size:.85rem; } .slotcard .v { font-size:.82rem; color:var(--muted); }
-  .toolbar { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+  .toolbar { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:10px; margin-bottom:14px; }
   .toolbar input { flex:1; min-width:200px; }
   .toolbar .btn { width:auto; margin:0; padding:12px 16px; box-shadow:none; }
-  .status-filter { display:flex; align-items:center; gap:8px; width:100%; margin:0; padding:0; border:0; }
+  .status-filter { display:flex; align-items:center; gap:8px; grid-column:1/-1; width:100%; margin:0; padding:0; border:0; }
   .status-filter legend { float:left; margin-right:4px; color:var(--muted); font-size:.82rem; font-weight:700; }
   .filter-options { display:inline-flex; gap:4px; padding:4px; border:1px solid var(--line); border-radius:10px; background:#eef5fb; }
   .filter-button { border:0; border-radius:7px; padding:8px 14px; background:transparent; color:var(--muted); cursor:pointer; font:700 .84rem/1.2 inherit; }
@@ -46,9 +46,21 @@
   .matching-access-dialog input { margin-top:6px; }
   .after-check { display:flex; align-items:center; justify-content:center; gap:5px; white-space:nowrap; font-size:.8rem; }
   .after-check input { width:18px; height:18px; margin:0; }
-  table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); font-size:.9rem; }
+  .table-wrap { max-width:100%; overflow:auto; border:1px solid var(--line); border-radius:12px; background:#fff; box-shadow:var(--shadow); }
+  table { width:100%; border-collapse:collapse; background:#fff; font-size:.9rem; }
   th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); }
-  th { background:#eef5fb; font-size:.78rem; color:var(--muted); } tr:last-child td { border-bottom:none; }
+  th { position:sticky; top:0; z-index:1; background:#eef5fb; font-size:.78rem; color:var(--muted); white-space:nowrap; } tr:last-child td { border-bottom:none; }
+  .customer-table { min-width:980px; table-layout:auto; }
+  .customer-table th:first-child, .customer-table td:first-child { padding-left:16px; }
+  .customer-main { min-width:170px; }
+  .customer-main strong { display:block; color:var(--ink); }
+  .customer-meta { display:flex; flex-wrap:wrap; gap:2px 10px; margin-top:3px; color:var(--muted); font-size:.76rem; }
+  .stacked-detail { min-width:135px; line-height:1.55; }
+  .detail-row { display:flex; justify-content:space-between; gap:10px; }
+  .detail-row span:first-child { color:var(--muted); font-size:.76rem; }
+  .reception-detail { min-width:160px; }
+  .reception-detail small { display:block; margin-top:3px; color:var(--muted); line-height:1.45; }
+  .mobile-label { display:none; }
   .pill { display:inline-block; padding:3px 10px; border-radius:999px; font-size:.78rem; font-weight:700; }
   .pill.in, .pill.follow-up-valid { background:#e2f5e6; color:#166534; }
   .pill.out { background:#eef1f4; color:#71808a; } .pill.follow-up-invalid { background:#fdecec; color:#a12020; }
@@ -110,12 +122,51 @@
   .bar-value { text-align:right; color:var(--muted); font-variant-numeric:tabular-nums; }
   .insight { margin-top:14px; padding:12px 14px; background:#f2f8fa; border-left:3px solid var(--blue); border-radius:8px; color:#365263; font-size:.84rem; line-height:1.6; }
   .empty-chart { padding:28px 8px; text-align:center; color:var(--muted); font-size:.85rem; }
+  @media (max-width: 760px) {
+    .wrap { padding:8px 12px 56px; }
+    .dashboard-header { align-items:flex-start!important; gap:10px; }
+    .dashboard-header h1 { font-size:1.45rem; }
+    .stats, .match-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .stat { padding:11px 8px; }
+    .stat .n { font-size:1.55rem; }
+    .slotgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .toolbar { grid-template-columns:1fr; }
+    .toolbar input, .toolbar .btn { width:100%; min-width:0; }
+    .status-filter { grid-column:auto; display:block; }
+    .status-filter legend { float:none; margin:0 0 5px; padding:0; }
+    .filter-options { display:grid; grid-template-columns:repeat(3,1fr); width:100%; }
+    .filter-result { display:block; margin:6px 0 0; text-align:right; }
+    .page-tabs { width:100%; overflow-x:auto; }
+    .page-tab { flex:1 0 auto; padding:10px 12px; }
+    #customerPanel .table-wrap { overflow:visible; border:0; background:transparent; box-shadow:none; }
+    .customer-table { min-width:0; table-layout:fixed; background:transparent; }
+    .customer-table thead { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    .customer-table tbody { display:grid; gap:12px; }
+    .customer-table tr { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); overflow:hidden; border:1px solid var(--line); border-radius:14px; background:#fff; box-shadow:0 4px 14px #17324b12; }
+    .customer-table td, .customer-table td:first-child { display:block; min-width:0; padding:10px 12px; border-bottom:1px solid var(--line); }
+    .customer-table td::before { content:attr(data-label); display:block; margin-bottom:4px; color:var(--muted); font-size:.7rem; font-weight:700; }
+    .customer-table td:nth-child(2), .customer-table td:nth-child(7), .customer-table td:nth-child(8), .customer-table td:last-child { grid-column:1/-1; }
+    .customer-table td:last-child { border-bottom:0; background:#f8fbfd; }
+    .customer-main { min-width:0; }
+    .actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); white-space:normal; }
+    .actions .act { min-height:40px; }
+    .detail-row { justify-content:flex-start; }
+    .detail-row span:first-child { width:68px; flex:0 0 68px; }
+    .edit-grid { grid-template-columns:1fr; }
+    .edit-wide { grid-column:auto; }
+    .analytics-actions { align-items:stretch; flex-direction:column; }
+    .analytics-actions select, .analytics-actions .act { width:100%; }
+  }
+  @media (max-width: 390px) {
+    .stats, .slotgrid { grid-template-columns:1fr 1fr; gap:7px; }
+    .customer-table tr { grid-template-columns:1fr; }
+    .customer-table td, .customer-table td:nth-child(2), .customer-table td:nth-child(7), .customer-table td:nth-child(8), .customer-table td:last-child { grid-column:1; }
+    .customer-table td:last-child { grid-column:1; }
+  }
   @media print { body { background:#fff; } .login, .page-tabs, #logout, .analytics-actions { display:none!important; } #main { display:block!important; } #customerPanel { display:none!important; } #analyticsPanel { display:block!important; } .analytics-card,.kpi { box-shadow:none; break-inside:avoid; } }
-  @media (max-width: 760px) { .stats, .match-summary { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } }
   @media (max-width: 900px) { .kpis { grid-template-columns:repeat(3,1fr); } .analytics-grid { grid-template-columns:1fr; } }
   @media (max-width: 560px) { .analytics-head { align-items:stretch; flex-direction:column; } .analytics-actions { justify-content:space-between; } .kpis { grid-template-columns:repeat(2,1fr); } .page-tabs { width:100%; } .page-tab { flex:1; padding:10px 8px; } .bar-row { grid-template-columns:105px 1fr 40px; } }
 
-  @media (max-width: 760px) { .stats { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } .status-filter { align-items:flex-start; } .status-filter legend { float:none; padding-top:10px; } .filter-options { flex:1; } .filter-button { flex:1; padding-inline:8px; } .filter-result { display:none; } }
 </style>
 </head>
 <body>
@@ -128,7 +179,7 @@
 </div>
 
 <main class="wrap" id="main" style="display:none">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0">
+  <div class="dashboard-header" style="display:flex;justify-content:space-between;align-items:center;margin:14px 0">
     <h1 id="title" style="margin:0;color:var(--blue)">顧客管理</h1>
     <button class="act" id="logout">ログアウト</button>
   </div>
@@ -160,7 +211,7 @@
       <span class="filter-result" id="filterResult" aria-live="polite"></span>
     </fieldset>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>引渡</th><th>ランク</th><th>アフター案件あり</th><th>アフター対応完了</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  <div class="table-wrap"><table class="customer-table"><thead><tr><th>種別</th><th>お客様情報</th><th>時間帯</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>顧客情報</th><th>受付状況</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
   </section>
   <section id="matchingPanel" class="tab-panel" role="tabpanel" aria-labelledby="matchingTab" hidden>
     <div class="analytics-head"><div><h2>申込データと既存顧客の突合</h2><p>電話番号・氏名・住所から候補を自動反映し、必要な場合だけ担当者が修正できます。</p></div></div>
@@ -334,7 +385,7 @@
       return matchesSearch && matchesStatus;
     });
     $("filterResult").textContent = `${rows.length}件を表示`;
-    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td>${esc(record.name)}${record.adminMemo ? '<br><small title="'+esc(record.adminMemo)+'">📝 メモあり</small>' : ''}</td><td>${esc(brand)}</td><td>${esc(record.slot || "指定なし")}</td><td>${esc(record.tel)}</td><td>${callStatus}</td><td>${followUp}</td><td>${strapCell}</td><td>${esc(customer?.handoverDate || "—")}</td><td>${esc(customer?.rank || "—")}</td><td>${esc(customer?.hasAfterProject || "—")}</td><td>${afterDone}</td><td>${state}</td><td>${checkedInAt}</td><td>${esc(record.checkedInBy || "—")}</td><td><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
+    $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td data-label="種別"><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td data-label="お客様情報" class="customer-main"><strong>${esc(record.name)}</strong><div class="customer-meta"><span>☎ ${esc(record.tel || "未登録")}</span>${brand !== "—" ? `<span>${esc(brand)}</span>` : ""}${record.adminMemo ? `<span title="${esc(record.adminMemo)}">📝 メモあり</span>` : ""}</div></td><td data-label="時間帯">${esc(record.slot || "指定なし")}</td><td data-label="架電状況">${callStatus}</td><td data-label="判定">${followUp}</td><td data-label="ネックストラップ">${strapCell}</td><td data-label="顧客情報" class="stacked-detail"><div class="detail-row"><span>引渡</span><b>${esc(customer?.handoverDate || "—")}</b></div><div class="detail-row"><span>ランク</span><b>${esc(customer?.rank || "—")}</b></div><div class="detail-row"><span>案件</span><b>${esc(customer?.hasAfterProject || "—")}</b></div><div class="detail-row"><span>対応</span>${afterDone}</div></td><td data-label="受付状況" class="reception-detail">${state}<small>${checkedInAt || "受付時刻なし"}<br>対応：${esc(record.checkedInBy || "—")}</small></td><td data-label="操作"><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
     $("rows").querySelectorAll("[data-un]").forEach(button => button.onclick = () => setCheck(button.dataset.un, false));
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
