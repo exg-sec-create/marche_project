@@ -76,7 +76,7 @@
 <!-- フィードバック -->
 <div id="ov" role="dialog" aria-modal="true" aria-live="assertive">
   <div id="ovType"></div><div class="ic" id="ovIc"></div><div class="bg" id="ovName"></div>
-  <div class="sm" id="ovMsg"></div><div id="ovStrap"></div><button type="button" id="ovOk">OK（次の読み取りへ）</button>
+  <div class="sm" id="ovMsg"></div><div id="ovStrap"></div><button type="button" id="ovOk">確認（次の読み取りへ）</button>
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -89,7 +89,7 @@
   const auth = firebase.auth(), db = firebase.firestore();
   db.enablePersistence({ synchronizeTabs:true }).catch(()=>{}); // 会場Wi-Fi対策
   const $ = id => document.getElementById(id);
-  let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[], feedbackTimer=null;
+  let user=null, scanner=null, busy=false, lastCode="", lastTime=0, audioCtx=null, cache=[];
 
   $("loginBtn").onclick = async () => {
     $("loginErr").style.display="none";
@@ -130,8 +130,6 @@
     lastCode=text; lastTime=now; busy=true;
     const id = extractId(text);
     show(await checkIn(id)); await refresh();
-    // 見落としを防ぐため長めに表示。スタッフはOKボタンですぐ次の受付へ進めます。
-    feedbackTimer = setTimeout(hideFeedback, 6000);
   }
   function extractId(t){ try{ const u=new URL(t); const q=u.searchParams.get("id"); if(q) return q; }catch(_){} return t.trim(); }
 
@@ -209,7 +207,6 @@
     $("ovOk").focus();
   }
   function hideFeedback(){
-    clearTimeout(feedbackTimer); feedbackTimer=null;
     $("ov").style.display="none"; busy=false;
   }
   $("ovOk").onclick=hideFeedback;
