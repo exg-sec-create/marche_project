@@ -23,6 +23,21 @@
   .filter-button:hover { background:#fff9; color:var(--ink); }
   .filter-button[aria-pressed="true"] { background:#fff; color:var(--blue); box-shadow:0 1px 4px #17324b22; }
   .filter-result { margin-left:auto; color:var(--muted); font-size:.8rem; white-space:nowrap; }
+  .match-guide { margin-bottom:16px; padding:16px 18px; background:#f2f8fa; border:1px solid #cfe2ea; border-radius:12px; color:#365263; line-height:1.65; }
+  .match-guide strong { color:var(--ink); }
+  .import-row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:14px 0; }
+  .import-row input[type="file"] { width:auto; max-width:100%; padding:9px; background:#fff; }
+  .match-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+  .match-summary .stat { padding:11px; }
+  .match-status { white-space:nowrap; }
+  .pill.match-confirmed { background:#e2f5e6; color:#166534; }
+  .pill.match-suggested { background:#eaf4fd; color:#1a5fa8; }
+  .pill.match-review { background:#fff1e5; color:#9a4b0b; }
+  .pill.match-none { background:#eef1f4; color:#64727c; }
+  .candidate-list { display:grid; gap:8px; margin:14px 0; }
+  .candidate { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:11px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
+  .candidate:hover { border-color:#79abc1; background:#f7fbfd; }
+  .candidate-detail { color:var(--muted); font-size:.82rem; line-height:1.5; }
   table { width:100%; border-collapse:collapse; background:#fff; border-radius:12px; overflow:hidden; box-shadow:var(--shadow); font-size:.9rem; }
   th,td { text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); }
   th { background:#eef5fb; font-size:.78rem; color:var(--muted); } tr:last-child td { border-bottom:none; }
@@ -89,7 +104,7 @@ codex-60g5ve
   .insight { margin-top:14px; padding:12px 14px; background:#f2f8fa; border-left:3px solid var(--blue); border-radius:8px; color:#365263; font-size:.84rem; line-height:1.6; }
   .empty-chart { padding:28px 8px; text-align:center; color:var(--muted); font-size:.85rem; }
   @media print { body { background:#fff; } .login, .page-tabs, #logout, .analytics-actions { display:none!important; } #main { display:block!important; } #customerPanel { display:none!important; } #analyticsPanel { display:block!important; } .analytics-card,.kpi { box-shadow:none; break-inside:avoid; } }
-  @media (max-width: 760px) { .stats { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } }
+  @media (max-width: 760px) { .stats, .match-summary { grid-template-columns:repeat(2,1fr); } .table-wrap { overflow-x:auto; } .edit-grid { grid-template-columns:1fr; } .edit-wide { grid-column:auto; } }
   @media (max-width: 900px) { .kpis { grid-template-columns:repeat(3,1fr); } .analytics-grid { grid-template-columns:1fr; } }
   @media (max-width: 560px) { .analytics-head { align-items:stretch; flex-direction:column; } .analytics-actions { justify-content:space-between; } .kpis { grid-template-columns:repeat(2,1fr); } .page-tabs { width:100%; } .page-tab { flex:1; padding:10px 8px; } .bar-row { grid-template-columns:105px 1fr 40px; } }
 
@@ -113,6 +128,7 @@ main
   </div>
   <nav class="page-tabs" aria-label="顧客管理メニュー" role="tablist">
     <button class="page-tab active" id="customerTab" role="tab" aria-selected="true" aria-controls="customerPanel">顧客一覧</button>
+    <button class="page-tab" id="matchingTab" role="tab" aria-selected="false" aria-controls="matchingPanel">顧客突合</button>
     <button class="page-tab" id="analyticsTab" role="tab" aria-selected="false" aria-controls="analyticsPanel">来場分析</button>
   </nav>
   <section id="customerPanel" class="tab-panel" role="tabpanel" aria-labelledby="customerTab">
@@ -139,6 +155,25 @@ main
     </fieldset>
   </div>
   <div class="table-wrap"><table><thead><tr><th>種別</th><th>代表者様</th><th>ブランド</th><th>時間帯</th><th>電話</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>状態</th><th>受付時刻</th><th>受付対応者</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
+  </section>
+  <section id="matchingPanel" class="tab-panel" role="tabpanel" aria-labelledby="matchingTab" hidden>
+    <div class="analytics-head"><div><h2>申込データと既存顧客の突合</h2><p>電話番号・氏名・住所から候補を抽出し、担当者が最終確定できます。</p></div></div>
+    <div class="match-guide">
+      <strong>CSVの格納方法：</strong>スプレッドシートを「ファイル → ダウンロード → カンマ区切り形式（.csv）」で保存し、下のファイル欄から読み込んでください。CSVはスタッフでログインしたブラウザからFirestoreの <code>customerMasters</code> に登録され、一般公開されません。<br>
+      必須列は「顧客ID」「顧客名1氏名」です。電話番号・顧客名2・旧住所・新住所など、提示いただいた列名をそのまま利用できます。
+    </div>
+    <div class="import-row">
+      <input id="customerCsvFile" type="file" accept=".csv,text/csv" aria-label="既存顧客CSV" />
+      <button class="btn" id="importCustomerCsv" style="width:auto;margin:0;padding:11px 18px">CSVを取り込む</button>
+      <span id="importStatus" class="hint" aria-live="polite">既存顧客 0件</span>
+    </div>
+    <div class="match-summary">
+      <div class="stat"><div class="n" id="mConfirmed">0</div><div class="l">確定済み</div></div>
+      <div class="stat"><div class="n" id="mSuggested">0</div><div class="l">自動候補あり</div></div>
+      <div class="stat"><div class="n" id="mReview">0</div><div class="l">要確認</div></div>
+      <div class="stat"><div class="n" id="mNone">0</div><div class="l">候補なし</div></div>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th>申込者</th><th>電話・住所</th><th>突合状態</th><th>候補顧客</th><th>操作</th></tr></thead><tbody id="matchingRows"></tbody></table></div>
   </section>
   <section id="analyticsPanel" class="tab-panel" role="tabpanel" aria-labelledby="analyticsTab" hidden>
     <div class="analytics-head"><div><h2>来場・マーケティング分析</h2><p id="analyticsSubtitle">イベント成果をリアルタイムに集計</p></div><div class="analytics-actions"><select id="analyticsScope" aria-label="集計対象"><option value="checkedIn">来場者のみ</option><option value="all">全予約者</option></select><button class="act" id="printReport">結果を印刷</button></div></div>
@@ -191,6 +226,15 @@ main
   </form>
 </dialog>
 
+<dialog id="matchDialog" aria-labelledby="matchDialogTitle">
+  <form id="matchForm" method="dialog">
+    <div class="section-title"><span id="matchDialogTitle">顧客を選択</span></div>
+    <p id="matchRegistrationInfo" class="hint"></p>
+    <div id="matchCandidates" class="candidate-list"></div>
+    <div class="dialog-actions"><button type="button" class="act" id="clearMatch">突合を解除</button><button type="button" class="act" id="matchCancel">キャンセル</button><button type="submit" class="btn" id="matchSave">選択を確定</button></div>
+  </form>
+</dialog>
+
 <dialog id="qrDialog" class="qr-dialog" aria-labelledby="qrDialogTitle">
   <div class="section-title"><span id="qrDialogTitle">受付QRコード</span></div>
   <p class="qr-dialog-name" id="qrDialogName"></p>
@@ -206,6 +250,7 @@ main
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
+<script src="src/customer-matching.js"></script>
 <script>
   firebase.initializeApp(window.firebaseConfig);
   const auth = firebase.auth(), db = firebase.firestore();
@@ -216,8 +261,9 @@ main
     "hayasaka@ych-exceed.com",
     "takeuchi_23@besto-haus.com"
   ]);
-  let all = [], unsub = null;
+  let all = [], customers = [], unsub = null, customerUnsub = null;
   let editingId = null;
+  let matchingRegistrationId = null;
   let qrDialogId = null;
   let statusFilter = "all";
 
@@ -230,10 +276,11 @@ main
   };
   $("logout").onclick = () => auth.signOut();
   auth.onAuthStateChanged(user => {
-    if (user) { $("loginBox").style.display = "none"; $("main").style.display = "block"; $("title").textContent = `${E.name || ""} ${E.year || ""} 顧客管理`; listen(); }
-    else { $("loginBox").style.display = "block"; $("main").style.display = "none"; if (unsub) { unsub(); unsub = null; } }
+    if (user) { $("loginBox").style.display = "none"; $("main").style.display = "block"; $("title").textContent = `${E.name || ""} ${E.year || ""} 顧客管理`; listen(); listenCustomers(); }
+    else { $("loginBox").style.display = "block"; $("main").style.display = "none"; if (unsub) { unsub(); unsub = null; } if (customerUnsub) { customerUnsub(); customerUnsub = null; } }
   });
   function listen() { unsub = db.collection("registrations").orderBy("createdAt", "desc").onSnapshot(snapshot => { all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); render(); }, error => console.error(error)); }
+  function listenCustomers() { customerUnsub = db.collection("customerMasters").onSnapshot(snapshot => { customers = snapshot.docs.map(doc => ({ customerId:doc.id, ...doc.data() })); $("importStatus").textContent = `既存顧客 ${customers.length.toLocaleString("ja-JP")}件`; renderMatching(); }, error => { console.error(error); $("importStatus").textContent = "既存顧客データを読み込めませんでした"; }); }
   $("search").addEventListener("input", render);
   document.querySelectorAll("[data-status-filter]").forEach(button => {
     button.addEventListener("click", () => {
@@ -264,22 +311,115 @@ main
     $("rows").querySelectorAll("[data-edit]").forEach(button => button.onclick = () => openEditor(button.dataset.edit));
     $("rows").querySelectorAll("[data-qr]").forEach(button => button.onclick = () => openQrDialog(button.dataset.qr));
     $("rows").querySelectorAll("[data-delete]").forEach(button => button.onclick = () => deleteRegistration(button.dataset.delete));
+    renderMatching();
     renderAnalytics();
   }
   function selectTab(name) {
     const analytics = name === "analytics";
-    $("customerPanel").hidden = analytics;
+    const matching = name === "matching";
+    $("customerPanel").hidden = analytics || matching;
+    $("matchingPanel").hidden = !matching;
     $("analyticsPanel").hidden = !analytics;
-    $("customerTab").classList.toggle("active", !analytics);
+    $("customerTab").classList.toggle("active", !analytics && !matching);
+    $("matchingTab").classList.toggle("active", matching);
     $("analyticsTab").classList.toggle("active", analytics);
-    $("customerTab").setAttribute("aria-selected", String(!analytics));
+    $("customerTab").setAttribute("aria-selected", String(!analytics && !matching));
+    $("matchingTab").setAttribute("aria-selected", String(matching));
     $("analyticsTab").setAttribute("aria-selected", String(analytics));
     if (analytics) renderAnalytics();
+    if (matching) renderMatching();
   }
   $("customerTab").onclick = () => selectTab("customer");
+  $("matchingTab").onclick = () => selectTab("matching");
   $("analyticsTab").onclick = () => selectTab("analytics");
   $("analyticsScope").onchange = renderAnalytics;
   $("printReport").onclick = () => window.print();
+
+  $("importCustomerCsv").onclick = async () => {
+    const file = $("customerCsvFile").files[0];
+    if (!file) { alert("取り込むCSVファイルを選択してください。"); return; }
+    const button = $("importCustomerCsv");
+    button.disabled = true;
+    try {
+      const csvCustomers = CustomerMatching.rowsToCustomers(CustomerMatching.parseCsv(await file.text()));
+      if (!csvCustomers.length) throw new Error("取り込み対象の顧客がありません。");
+      if (!confirm(`${csvCustomers.length.toLocaleString("ja-JP")}件を既存顧客データへ登録・更新しますか？`)) return;
+      let completed = 0;
+      for (let offset = 0; offset < csvCustomers.length; offset += 450) {
+        const batch = db.batch();
+        csvCustomers.slice(offset, offset + 450).forEach(customer => {
+          const ref = db.collection("customerMasters").doc(customer.customerId);
+          batch.set(ref, { ...customer, importedAt:firebase.firestore.FieldValue.serverTimestamp(), importedBy:auth.currentUser.email }, { merge:true });
+        });
+        await batch.commit();
+        completed = Math.min(offset + 450, csvCustomers.length);
+        $("importStatus").textContent = `取り込み中 ${completed}/${csvCustomers.length}件`;
+      }
+      $("customerCsvFile").value = "";
+      $("importStatus").textContent = `${completed.toLocaleString("ja-JP")}件を取り込みました`;
+    } catch (error) {
+      console.error("Customer CSV import failed", error);
+      $("importStatus").textContent = "CSVの取り込みに失敗しました";
+      alert(error.message || "CSVの形式と通信環境をご確認ください。");
+    } finally { button.disabled = false; }
+  };
+
+  function renderMatching() {
+    if (!$("matchingRows")) return;
+    const states = { confirmed:0, suggested:0, review:0, none:0 };
+    const labels = { confirmed:"確定済み", suggested:"自動候補", review:"要確認", none:"候補なし" };
+    $("matchingRows").innerHTML = all.map(record => {
+      const candidates = CustomerMatching.findCandidates(record, customers);
+      const state = CustomerMatching.matchState(record, customers);
+      states[state] += 1;
+      const confirmed = customers.find(customer => customer.customerId === record.matchedCustomerId);
+      const candidate = confirmed || candidates[0]?.customer;
+      const reason = confirmed ? "担当者が確定" : (candidates[0]?.reasons.join("・") || "一致項目なし");
+      const customerText = candidate ? `<strong>${esc(candidate.name1)}</strong> <small>${esc(candidate.customerId)}</small><br><small>${esc(candidate.tel1 || "電話なし")} / ${esc(candidate.store || candidate.office || "担当店なし")}</small>` : "—";
+      return `<tr><td><strong>${esc(record.name)}</strong><br><small>${esc(typeLabel(record.registrationType))}</small></td><td>${esc(record.tel || "電話なし")}<br><small>${esc(record.address || "住所なし")}</small></td><td class="match-status"><span class="pill match-${state}">${labels[state]}</span><br><small>${esc(reason)}</small></td><td>${customerText}</td><td><button class="act" data-match="${record.id}">${state === "confirmed" ? "変更" : "候補を選ぶ"}</button></td></tr>`;
+    }).join("");
+    $("mConfirmed").textContent = states.confirmed;
+    $("mSuggested").textContent = states.suggested;
+    $("mReview").textContent = states.review;
+    $("mNone").textContent = states.none;
+    $("matchingRows").querySelectorAll("[data-match]").forEach(button => button.onclick = () => openMatchDialog(button.dataset.match));
+  }
+
+  function openMatchDialog(id) {
+    const record = all.find(item => item.id === id);
+    if (!record) return;
+    matchingRegistrationId = id;
+    $("matchRegistrationInfo").textContent = `申込：${record.name || "名称未設定"} / ${record.tel || "電話なし"} / ${record.address || "住所なし"}`;
+    let candidates = CustomerMatching.findCandidates(record, customers, 20);
+    const confirmed = customers.find(customer => customer.customerId === record.matchedCustomerId);
+    if (confirmed && !candidates.some(item => item.customer.customerId === confirmed.customerId)) candidates.unshift({ customer:confirmed, score:0, reasons:["現在の確定先"] });
+    $("matchCandidates").innerHTML = candidates.length ? candidates.map((candidate, index) => `<label class="candidate"><input type="radio" name="customerCandidate" value="${esc(candidate.customer.customerId)}" ${(record.matchedCustomerId === candidate.customer.customerId || (!record.matchedCustomerId && index === 0)) ? "checked" : ""}><span><strong>${esc(candidate.customer.name1)}${candidate.customer.name2 ? ` / ${esc(candidate.customer.name2)}` : ""}</strong> <small>${esc(candidate.customer.customerId)}</small><br><span class="candidate-detail">${esc(candidate.customer.tel1 || "電話なし")} / ${esc(candidate.customer.newAddress || candidate.customer.oldAddress || "住所なし")}<br>${esc(candidate.reasons.join("・") || "手動選択")}（スコア ${candidate.score}）</span></span></label>`).join("") : '<div class="empty-chart">一致候補がありません。CSVの内容または申込情報をご確認ください。</div>';
+    $("matchSave").disabled = !candidates.length;
+    $("clearMatch").hidden = !record.matchedCustomerId;
+    $("matchDialog").showModal();
+  }
+  $("matchCancel").onclick = () => $("matchDialog").close();
+  $("matchForm").onsubmit = async event => {
+    event.preventDefault();
+    const selected = document.querySelector('input[name="customerCandidate"]:checked');
+    if (!matchingRegistrationId || !selected) return;
+    await saveMatch(selected.value);
+  };
+  $("clearMatch").onclick = () => saveMatch("");
+  async function saveMatch(customerId) {
+    const customer = customers.find(item => item.customerId === customerId);
+    const button = $("matchSave"); button.disabled = true;
+    try {
+      await db.collection("registrations").doc(matchingRegistrationId).update({
+        matchedCustomerId:customerId || firebase.firestore.FieldValue.delete(),
+        matchedCustomerName:customer?.name1 || firebase.firestore.FieldValue.delete(),
+        matchedAt:customerId ? firebase.firestore.FieldValue.serverTimestamp() : firebase.firestore.FieldValue.delete(),
+        matchedBy:customerId ? auth.currentUser.email : firebase.firestore.FieldValue.delete()
+      });
+      $("matchDialog").close();
+    } catch (error) { console.error(error); alert("突合結果を保存できませんでした。通信環境をご確認ください。"); }
+    finally { button.disabled = false; }
+  }
 
   function renderAnalytics() {
     const checkedIn = all.filter(record => record.checkedIn);
@@ -412,7 +552,7 @@ main
       $("editErr").style.display = "block";
     } finally { save.disabled = false; }
   };
-  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "架電状況", "営業担当者", "メール", "資料送付先住所", "備考", "運営メモ", "大人人数", "子ども人数（小学生以下）", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "ネックストラップ", "受付", "受付時刻", "受付対応者"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, callStatusLabel(record.callStatus), record.salesperson, record.email, record.address, record.remarks, record.adminMemo, record.adultCount || record.partySize, record.childCount, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : "", record.checkedInBy || ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
+  $("csv").onclick = () => { const head = ["受付種別", "代表者様", "紹介者（OB様）", "建築ブランド", "時間帯", "電話", "架電状況", "営業担当者", "メール", "資料送付先住所", "備考", "運営メモ", "大人人数", "子ども人数（小学生以下）", "会社・店舗名", "ご担当・出店名", "住まいづくりへの興味", "現在の状況", "興味のあるブランド", "希望する案内方法", "判定", "ネックストラップ", "受付", "受付時刻", "受付対応者", "突合済み顧客ID", "突合済み顧客名"]; const lines = [head.join(",")].concat(all.map(record => [typeLabel(record.registrationType), record.name, record.referrerName, ownerBrandLabel(record.ownerBrand), record.slot, record.tel, callStatusLabel(record.callStatus), record.salesperson, record.email, record.address, record.remarks, record.adminMemo, record.adultCount || record.partySize, record.childCount, record.company, record.booth, homeInterestLabel(record.homeInterest), homeStageLabel(record.homeStage), brandAwarenessLabel(record.brandAwareness), contactPreferenceLabel(record.contactPreference), followUpStatusLabel(record), neckStrapInfo(record)?.label || "", record.checkedIn ? "済" : "未", record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : "", record.checkedInBy || "", record.matchedCustomerId || "", record.matchedCustomerName || ""].map(cell).join(","))); const blob = new Blob(["\uFEFF" + lines.join("\n")], { type: "text/csv" }); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "marche2026_" + Date.now() + ".csv"; link.click(); URL.revokeObjectURL(link.href); };
   function fmt(date) { return date.toLocaleString("ja-JP", { month:"numeric", day:"numeric", hour:"2-digit", minute:"2-digit" }); }
   function typeLabel(type) { return ({ owner:"オーナー様", general:"一般", referral:"紹介", vendor:"業者" })[type] || "一般"; }
   function homeInterestLabel(value) { return ({ interested:"興味あり", not_interested:"興味なし" })[value] || ""; }
