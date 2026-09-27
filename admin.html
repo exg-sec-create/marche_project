@@ -13,8 +13,10 @@
   .slotgrid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px; margin-bottom:18px; }
   .slotcard { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; }
   .slotcard .s { font-weight:700; font-size:.85rem; } .slotcard .v { font-size:.82rem; color:var(--muted); }
-  .toolbar { display:grid; grid-template-columns:minmax(260px,1fr) auto; gap:10px; margin-bottom:14px; }
+  .toolbar { display:grid; grid-template-columns:minmax(260px,1fr) auto auto; gap:10px; margin-bottom:14px; }
   .toolbar input { flex:1; min-width:200px; }
+  .sort-control { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.82rem; font-weight:700; white-space:nowrap; }
+  .sort-control select { width:auto; min-width:150px; padding:11px 34px 11px 12px; }
   .toolbar .btn { width:auto; margin:0; padding:12px 16px; box-shadow:none; }
   .status-filter { display:flex; align-items:center; gap:8px; grid-column:1/-1; width:100%; margin:0; padding:0; border:0; }
   .status-filter legend { float:left; margin-right:4px; color:var(--muted); font-size:.82rem; font-weight:700; }
@@ -135,7 +137,8 @@
     .stat .n { font-size:1.55rem; }
     .slotgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .toolbar { grid-template-columns:1fr; }
-    .toolbar input, .toolbar .btn { width:100%; min-width:0; }
+    .toolbar input, .toolbar .btn, .sort-control select { width:100%; min-width:0; }
+    .sort-control { align-items:stretch; flex-direction:column; gap:5px; }
     .status-filter { grid-column:auto; display:block; }
     .status-filter legend { float:none; margin:0 0 5px; padding:0; }
     .filter-options { display:grid; grid-template-columns:repeat(3,1fr); width:100%; }
@@ -205,6 +208,14 @@
   <div class="slotgrid" id="slotGrid"></div>
   <div class="toolbar">
     <input id="search" placeholder="名前・電話・メールで検索" />
+    <div class="sort-control">
+      <label for="customerSort">並び順</label>
+      <select id="customerSort">
+        <option value="created">申込順（新しい順）</option>
+        <option value="name-asc">名前（昇順）</option>
+        <option value="name-desc">名前（降順）</option>
+      </select>
+    </div>
     <button class="btn" id="csv">CSVを書き出す</button>
     <fieldset class="status-filter">
       <legend>顧客種別</legend>
@@ -363,6 +374,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="firebase-config.js"></script>
 <script src="src/customer-matching.js"></script>
+<script src="src/customer-sorting.js"></script>
 <script src="src/matching-access.js"></script>
 <script>
   firebase.initializeApp(window.firebaseConfig);
@@ -398,6 +410,7 @@
   function listen() { unsub = db.collection("registrations").orderBy("createdAt", "desc").onSnapshot(snapshot => { all = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })); render(); }, error => console.error(error)); }
   function listenCustomers() { customerUnsub = db.collection("customerMasters").onSnapshot(snapshot => { customers = snapshot.docs.map(doc => ({ customerId:doc.id, ...doc.data() })); $("importStatus").textContent = `既存顧客 ${customers.length.toLocaleString("ja-JP")}件`; render(); }, error => { console.error(error); $("importStatus").textContent = "既存顧客データを読み込めませんでした"; }); }
   $("search").addEventListener("input", render);
+  $("customerSort").addEventListener("change", render);
   document.querySelectorAll("[data-status-filter]").forEach(button => {
     button.addEventListener("click", () => {
       statusFilter = button.dataset.statusFilter;
@@ -429,7 +442,7 @@
     $("sFollowUp").textContent = all.filter(record => followUpStatus(record) === "valid").length;
     const grid = $("slotGrid"); grid.innerHTML = "";
     (window.TIME_SLOTS || []).forEach(slot => { const records = all.filter(record => record.slot === slot); const checkedIn = records.filter(record => record.checkedIn).length; const card = document.createElement("div"); card.className = "slotcard"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${records.length} ・ 受付 ${checkedIn}</div>`; grid.appendChild(card); });
-    const rows = all.filter(record => {
+    let rows = all.filter(record => {
       const matchesSearch = !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query));
       const matchesStatus = statusFilter === "all" || (statusFilter === "completed" ? Boolean(record.checkedIn) : !record.checkedIn);
       const matchesType = typeFilter === "all" || record.registrationType === typeFilter;
@@ -439,6 +452,8 @@
         || (afterFilter === "completed" ? Boolean(record.afterSupportCompleted) : hasAfter && !record.afterSupportCompleted);
       return matchesSearch && matchesStatus && matchesType && matchesAfter;
     });
+    const sort = $("customerSort").value;
+    if (sort === "name-asc" || sort === "name-desc") rows = CustomerSorting.byName(rows, sort === "name-asc" ? "asc" : "desc");
     $("filterResult").textContent = `${rows.length}件を表示`;
     $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td data-label="種別"><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td data-label="お客様情報" class="customer-main"><strong>${esc(record.name)}</strong><div class="customer-meta"><span>☎ ${esc(record.tel || "未登録")}</span>${brand !== "—" ? `<span>${esc(brand)}</span>` : ""}${record.adminMemo ? `<span title="${esc(record.adminMemo)}">📝 メモあり</span>` : ""}</div></td><td data-label="時間帯">${esc(record.slot || "指定なし")}</td><td data-label="架電状況">${callStatus}</td><td data-label="判定">${followUp}</td><td data-label="ネックストラップ">${strapCell}</td><td data-label="顧客情報" class="stacked-detail"><div class="detail-row"><span>引渡</span><b>${esc(customer?.handoverDate || "—")}</b></div><div class="detail-row"><span>ランク</span><b>${esc(customer?.rank || "—")}</b></div><div class="detail-row"><span>カルテ</span><b>${esc(customer?.hasAfterProject || "—")}</b></div><div class="detail-row"><span>対応</span>${afterDone}</div></td><td data-label="受付状況" class="reception-detail">${state}<small>${checkedInAt || "受付時刻なし"}<br>対応：${esc(record.checkedInBy || "—")}</small></td><td data-label="操作"><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
