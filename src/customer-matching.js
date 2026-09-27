@@ -94,6 +94,24 @@
       .slice(0, limit);
   }
 
+  function searchCustomers(customers, query, limit = 50) {
+    const normalizedQuery = String(query || "").normalize("NFKC").trim().toLowerCase();
+    if (!normalizedQuery) return [];
+    const compactQuery = normalizedQuery.replace(/[\s\u3000\-ー−―‐・･.．,，、]/g, "");
+    return customers.filter(customer => [
+      customer.customerId, customer.externalSystemId, customer.name1, customer.kana1,
+      customer.name2, customer.kana2, customer.tel1, customer.tel2, customer.postalCode,
+      customer.prefecture, customer.oldAddress, customer.newAddress, customer.office,
+      customer.store, customer.salesperson
+    ].some(value => {
+      const normalizedValue = String(value || "").normalize("NFKC").toLowerCase();
+      return normalizedValue.includes(normalizedQuery)
+        || (compactQuery && normalizedValue.replace(/[\s\u3000\-ー−―‐・･.．,，、]/g, "").includes(compactQuery));
+    })).sort((a, b) => String(a.name1 || "").localeCompare(String(b.name1 || ""), "ja")
+      || String(a.customerId || "").localeCompare(String(b.customerId || ""), "ja"))
+      .slice(0, limit);
+  }
+
   function matchState(registration, customers) {
     if (registration.matchedCustomerId) return "confirmed";
     const candidates = findCandidates(registration, customers);
@@ -115,5 +133,5 @@
     return Object.keys(incoming).filter(key => key !== "customerId" && String(existing[key] ?? "") !== String(incoming[key] ?? ""));
   }
 
-  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, matchState, resolveCustomer, customerChanges };
+  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, searchCustomers, matchState, resolveCustomer, customerChanges };
 });
