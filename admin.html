@@ -31,6 +31,9 @@
   .import-row input[type="file"] { width:auto; max-width:100%; padding:9px; background:#fff; }
   .match-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
   .match-summary .stat { padding:11px; }
+  .matching-search { display:flex; align-items:center; gap:10px; margin:0 0 14px; }
+  .matching-search input { width:min(440px,100%); }
+  .matching-search .hint { margin-left:auto; white-space:nowrap; }
   .match-status { white-space:nowrap; }
   .pill.match-confirmed { background:#e2f5e6; color:#166534; }
   .pill.match-suggested { background:#eaf4fd; color:#1a5fa8; }
@@ -138,6 +141,9 @@
     .slotgrid { grid-template-columns:repeat(2,minmax(0,1fr)); }
     .toolbar { grid-template-columns:1fr; }
     .toolbar input, .toolbar .btn, .sort-control select { width:100%; min-width:0; }
+    .matching-search { align-items:stretch; flex-direction:column; }
+    .matching-search input { width:100%; }
+    .matching-search .hint { margin-left:0; text-align:right; }
     .sort-control { align-items:stretch; flex-direction:column; gap:5px; }
     .status-filter { grid-column:auto; display:block; }
     .status-filter legend { float:none; margin:0 0 5px; padding:0; }
@@ -247,7 +253,7 @@
   <div class="table-wrap"><table class="customer-table"><thead><tr><th>種別</th><th>お客様情報</th><th>時間帯</th><th>架電状況</th><th>判定</th><th>ネックストラップ</th><th>顧客情報</th><th>受付状況</th><th>操作</th></tr></thead><tbody id="rows"></tbody></table></div>
   </section>
   <section id="matchingPanel" class="tab-panel" role="tabpanel" aria-labelledby="matchingTab" hidden>
-    <div class="analytics-head"><div><h2>申込データと既存顧客の突合</h2><p>電話番号・氏名・住所から候補を自動反映し、必要な場合だけ担当者が修正できます。</p></div></div>
+    <div class="analytics-head"><div><h2>オーナー様申込データと既存顧客の突合</h2><p>オーナー様のフォーム回答を、電話番号・氏名・住所から既存顧客の候補へ自動反映します。</p></div></div>
     <div class="match-guide">
       <strong>CSVの格納方法：</strong>スプレッドシートを「ファイル → ダウンロード → カンマ区切り形式（.csv）」で保存し、下のファイル欄から読み込んでください。CSVはスタッフでログインしたブラウザからFirestoreの <code>customerMasters</code> に登録され、一般公開されません。<br>
       必須列は「顧客ID」「顧客名1氏名」です。電話番号・顧客名2・旧住所・新住所・引渡・ランク・アフター案件ありを利用できます。候補は自動的に顧客一覧へ反映され、「要確認」「自動候補」の表示を確認しながら必要な場合だけ修正できます。<br>
@@ -264,6 +270,10 @@
       <div class="stat"><div class="n" id="mSuggested">0</div><div class="l">自動候補あり</div></div>
       <div class="stat"><div class="n" id="mReview">0</div><div class="l">要確認</div></div>
       <div class="stat"><div class="n" id="mNone">0</div><div class="l">候補なし</div></div>
+    </div>
+    <div class="matching-search">
+      <input id="matchingSearch" type="search" placeholder="オーナー様の名前・電話・メール・住所で検索" aria-label="突合対象のオーナー様を検索" autocomplete="off" />
+      <span id="matchingSearchResult" class="hint" aria-live="polite"></span>
     </div>
     <div class="table-wrap"><table><thead><tr><th>申込者</th><th>電話・住所</th><th>突合状態</th><th>候補顧客</th><th>操作</th></tr></thead><tbody id="matchingRows"></tbody></table></div>
   </section>
@@ -556,21 +566,25 @@
   $("showCustomerMasters").onclick = () => { $("masterSearch").value = ""; renderCustomerMasters(); $("customerMastersDialog").showModal(); };
   $("masterSearch").oninput = renderCustomerMasters;
   $("customerMastersClose").onclick = () => $("customerMastersDialog").close();
+  $("matchingSearch").oninput = renderMatching;
 
   function renderMatching() {
     if (!$("matchingRows")) return;
     const states = { confirmed:0, suggested:0, review:0, none:0 };
     const labels = { confirmed:"確定済み", suggested:"自動候補", review:"要確認", none:"候補なし" };
-    $("matchingRows").innerHTML = all.map(record => {
+    const owners = CustomerMatching.filterOwnerRegistrations(all, "");
+    owners.forEach(record => { states[CustomerMatching.matchState(record, customers)] += 1; });
+    const records = CustomerMatching.filterOwnerRegistrations(all, $("matchingSearch").value);
+    $("matchingSearchResult").textContent = `${owners.length.toLocaleString("ja-JP")}件中 ${records.length.toLocaleString("ja-JP")}件を表示`;
+    $("matchingRows").innerHTML = records.length ? records.map(record => {
       const candidates = CustomerMatching.findCandidates(record, customers);
       const state = CustomerMatching.matchState(record, customers);
-      states[state] += 1;
       const confirmed = customers.find(customer => customer.customerId === record.matchedCustomerId);
       const candidate = confirmed || candidates[0]?.customer;
       const reason = confirmed ? "担当者が確定" : (candidates[0]?.reasons.join("・") || "一致項目なし");
       const customerText = candidate ? `<strong>${esc(candidate.name1)}</strong> <small>${esc(candidate.customerId)}</small><br><small>${esc(candidate.tel1 || "電話なし")} / ${esc(candidate.store || candidate.office || "担当店なし")}</small>` : "—";
       return `<tr><td><strong>${esc(record.name)}</strong><br><small>${esc(typeLabel(record.registrationType))}</small></td><td>${esc(record.tel || "電話なし")}<br><small>${esc(record.address || "住所なし")}</small></td><td class="match-status"><span class="pill match-${state}">${labels[state]}</span><br><small>${esc(reason)}</small></td><td>${customerText}</td><td><button class="act" data-match="${record.id}">${state === "confirmed" ? "変更" : "候補を選ぶ"}</button></td></tr>`;
-    }).join("");
+    }).join("") : '<tr><td colspan="5">検索条件に一致するオーナー様はいません。</td></tr>';
     $("mConfirmed").textContent = states.confirmed;
     $("mSuggested").textContent = states.suggested;
     $("mReview").textContent = states.review;

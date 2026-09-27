@@ -112,6 +112,23 @@
       .slice(0, limit);
   }
 
+  function filterOwnerRegistrations(registrations, query) {
+    const normalizedQuery = String(query || "").normalize("NFKC").trim().toLowerCase();
+    const compactQuery = normalizedQuery.replace(/[\s\u3000\-ー−―‐・･.．,，、]/g, "");
+    return registrations.filter(registration => {
+      if (registration.registrationType !== "owner") return false;
+      if (!normalizedQuery) return true;
+      return [
+        registration.name, registration.tel, registration.email, registration.address,
+        registration.matchedCustomerId, registration.matchedCustomerName
+      ].some(value => {
+        const normalizedValue = String(value || "").normalize("NFKC").toLowerCase();
+        return normalizedValue.includes(normalizedQuery)
+          || (compactQuery && normalizedValue.replace(/[\s\u3000\-ー−―‐・･.．,，、]/g, "").includes(compactQuery));
+      });
+    });
+  }
+
   function matchState(registration, customers) {
     if (registration.matchedCustomerId) return "confirmed";
     const candidates = findCandidates(registration, customers);
@@ -133,5 +150,5 @@
     return Object.keys(incoming).filter(key => key !== "customerId" && String(existing[key] ?? "") !== String(incoming[key] ?? ""));
   }
 
-  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, searchCustomers, matchState, resolveCustomer, customerChanges };
+  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, searchCustomers, filterOwnerRegistrations, matchState, resolveCustomer, customerChanges };
 });
