@@ -61,6 +61,17 @@ test("manual match overrides the automatic candidate", () => {
   assert.equal(matching.matchState(registration, customers), "confirmed");
 });
 
+test("searches the existing customer list across common fields", () => {
+  const customers = [
+    { customerId:"C-2", name1:"鈴木 花子", tel1:"080-1111-2222", newAddress:"山形市七日町", store:"山形店" },
+    { customerId:"C-1", name1:"佐藤 太郎", tel1:"090-1234-5678", newAddress:"天童市" }
+  ];
+  assert.deepEqual(matching.searchCustomers(customers, "09012345678").map(customer => customer.customerId), ["C-1"]);
+  assert.deepEqual(matching.searchCustomers(customers, "鈴木花子").map(customer => customer.customerId), ["C-2"]);
+  assert.deepEqual(matching.searchCustomers(customers, "山形店").map(customer => customer.customerId), ["C-2"]);
+  assert.deepEqual(matching.searchCustomers(customers, "  "), []);
+});
+
 test("omitted CSV columns do not become blank updates", () => {
   const customer = matching.rowsToCustomers(matching.parseCsv("顧客ID,顧客名1氏名\n1,山田太郎"))[0];
   assert.equal(Object.hasOwn(customer, "rank"), false);

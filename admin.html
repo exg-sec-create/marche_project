@@ -35,6 +35,10 @@
   .pill.match-review { background:#fff1e5; color:#9a4b0b; }
   .pill.match-none { background:#eef1f4; color:#64727c; }
   .candidate-list { display:grid; gap:8px; margin:14px 0; }
+  .match-customer-search { margin-top:14px; }
+  .match-customer-search label { display:block; margin-bottom:6px; font-size:.84rem; font-weight:700; color:var(--ink); }
+  .match-customer-search input { width:100%; }
+  .match-result-note { display:block; margin-top:6px; color:var(--muted); font-size:.78rem; }
   .candidate { display:grid; grid-template-columns:auto 1fr; gap:10px; padding:11px; border:1px solid var(--line); border-radius:10px; cursor:pointer; }
   .candidate:hover { border-color:#79abc1; background:#f7fbfd; }
   .candidate-detail { color:var(--muted); font-size:.82rem; line-height:1.5; }
@@ -314,6 +318,11 @@
   <form id="matchForm" method="dialog">
     <div class="section-title"><span id="matchDialogTitle">顧客を選択</span></div>
     <p id="matchRegistrationInfo" class="hint"></p>
+    <div class="match-customer-search">
+      <label for="matchCustomerSearch">既存顧客一覧から検索</label>
+      <input id="matchCustomerSearch" type="search" placeholder="顧客ID・氏名・電話・住所・担当店など" autocomplete="off" />
+      <small id="matchResultNote" class="match-result-note" aria-live="polite"></small>
+    </div>
     <div id="matchCandidates" class="candidate-list"></div>
     <div class="dialog-actions"><button type="button" class="act" id="clearMatch">突合を解除</button><button type="button" class="act" id="matchCancel">キャンセル</button><button type="submit" class="btn" id="matchSave">選択を確定</button></div>
   </form>
@@ -559,14 +568,33 @@
     if (!record) return;
     matchingRegistrationId = id;
     $("matchRegistrationInfo").textContent = `申込：${record.name || "名称未設定"} / ${record.tel || "電話なし"} / ${record.address || "住所なし"}`;
-    let candidates = CustomerMatching.findCandidates(record, customers, 20);
-    const confirmed = customers.find(customer => customer.customerId === record.matchedCustomerId);
-    if (confirmed && !candidates.some(item => item.customer.customerId === confirmed.customerId)) candidates.unshift({ customer:confirmed, score:0, reasons:["現在の確定先"] });
-    $("matchCandidates").innerHTML = candidates.length ? candidates.map((candidate, index) => `<label class="candidate"><input type="radio" name="customerCandidate" value="${esc(candidate.customer.customerId)}" ${(record.matchedCustomerId === candidate.customer.customerId || (!record.matchedCustomerId && index === 0)) ? "checked" : ""}><span><strong>${esc(candidate.customer.name1)}${candidate.customer.name2 ? ` / ${esc(candidate.customer.name2)}` : ""}</strong> <small>${esc(candidate.customer.customerId)}</small><br><span class="candidate-detail">${esc(candidate.customer.tel1 || "電話なし")} / ${esc(candidate.customer.newAddress || candidate.customer.oldAddress || "住所なし")}<br>${esc(candidate.reasons.join("・") || "手動選択")}（スコア ${candidate.score}）</span></span></label>`).join("") : '<div class="empty-chart">一致候補がありません。CSVの内容または申込情報をご確認ください。</div>';
-    $("matchSave").disabled = !candidates.length;
+    $("matchCustomerSearch").value = "";
+    renderMatchCandidates(record);
     $("clearMatch").hidden = !record.matchedCustomerId;
     $("matchDialog").showModal();
+    $("matchCustomerSearch").focus();
   }
+  function renderMatchCandidates(record) {
+    const query = $("matchCustomerSearch").value.trim();
+    let candidates;
+    if (query) {
+      candidates = CustomerMatching.searchCustomers(customers, query).map(customer => ({ customer, score:0, reasons:["顧客一覧から手動選択"] }));
+      $("matchResultNote").textContent = `${candidates.length.toLocaleString("ja-JP")}件表示（最大50件）`;
+    } else {
+      candidates = CustomerMatching.findCandidates(record, customers, 20);
+      const confirmed = customers.find(customer => customer.customerId === record.matchedCustomerId);
+      if (confirmed && !candidates.some(item => item.customer.customerId === confirmed.customerId)) candidates.unshift({ customer:confirmed, score:0, reasons:["現在の確定先"] });
+      $("matchResultNote").textContent = "自動候補を表示中。候補にない顧客は検索してください。";
+    }
+    const selectedId = document.querySelector('input[name="customerCandidate"]:checked')?.value || record.matchedCustomerId;
+    $("matchCandidates").innerHTML = candidates.length ? candidates.map((candidate, index) => `<label class="candidate"><input type="radio" name="customerCandidate" value="${esc(candidate.customer.customerId)}" ${(selectedId === candidate.customer.customerId || (!selectedId && !query && index === 0)) ? "checked" : ""}><span><strong>${esc(candidate.customer.name1)}${candidate.customer.name2 ? ` / ${esc(candidate.customer.name2)}` : ""}</strong> <small>${esc(candidate.customer.customerId)}</small><br><span class="candidate-detail">${esc(candidate.customer.tel1 || "電話なし")} / ${esc(candidate.customer.newAddress || candidate.customer.oldAddress || "住所なし")}<br>${esc(candidate.reasons.join("・") || "手動選択")}${candidate.score ? `（スコア ${candidate.score}）` : ""}</span></span></label>`).join("") : `<div class="empty-chart">${query ? "検索条件に一致する既存顧客はいません。" : "一致候補がありません。上の検索欄から既存顧客を検索できます。"}</div>`;
+    $("matchSave").disabled = !document.querySelector('input[name="customerCandidate"]:checked');
+    $("matchCandidates").querySelectorAll('input[name="customerCandidate"]').forEach(input => input.onchange = () => { $("matchSave").disabled = false; });
+  }
+  $("matchCustomerSearch").oninput = () => {
+    const record = all.find(item => item.id === matchingRegistrationId);
+    if (record) renderMatchCandidates(record);
+  };
   $("matchCancel").onclick = () => $("matchDialog").close();
   $("matchForm").onsubmit = async event => {
     event.preventDefault();
