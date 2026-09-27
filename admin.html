@@ -218,6 +218,14 @@
         <button type="button" class="filter-button" data-status-filter="completed" aria-pressed="false">受付完了</button>
         <button type="button" class="filter-button" data-status-filter="incomplete" aria-pressed="false">未完了</button>
       </div>
+    </fieldset>
+    <fieldset class="status-filter">
+      <legend>アフター対応</legend>
+      <div class="filter-options">
+        <button type="button" class="filter-button" data-after-filter="all" aria-pressed="true">すべて</button>
+        <button type="button" class="filter-button" data-after-filter="completed" aria-pressed="false">完了</button>
+        <button type="button" class="filter-button" data-after-filter="incomplete" aria-pressed="false">未完了</button>
+      </div>
       <span class="filter-result" id="filterResult" aria-live="polite"></span>
     </fieldset>
   </div>
@@ -254,6 +262,9 @@
       <div class="kpi"><div class="k-label">有効客</div><div class="k-value" id="aValid">0</div><div class="k-note" id="aValidRate">一般来場者の 0%</div></div>
       <div class="kpi"><div class="k-label">無効客</div><div class="k-value" id="aInvalid">0</div><div class="k-note">一般来場者</div></div>
       <div class="kpi"><div class="k-label">EXCEED GROUP認知率</div><div class="k-value" id="aAwarenessRate">0%</div><div class="k-note" id="aAwarenessNote">回答 0組</div></div>
+      <div class="kpi"><div class="k-label">オーナー来場数</div><div class="k-value" id="aOwnerVisits">0</div><div class="k-note">受付済みのオーナー様</div></div>
+      <div class="kpi"><div class="k-label">アフター対応数</div><div class="k-value" id="aOwnerAfterCompleted">0</div><div class="k-note">来場オーナー様の対応完了</div></div>
+      <div class="kpi accent"><div class="k-label">アフター対応率</div><div class="k-value" id="aOwnerAfterRate">0%</div><div class="k-note" id="aOwnerAfterNote">0組中 0組</div></div>
     </div>
     <div class="analytics-grid">
       <article class="analytics-card"><div class="card-heading"><h3>時間帯別の受付数</h3><small>実際の受付時刻</small></div><div id="hourChart"></div><div class="insight" id="peakInsight">受付データが蓄積されると、ピーク時間を表示します。</div></article>
@@ -360,6 +371,7 @@
   let qrDialogId = null;
   let statusFilter = "all";
   let typeFilter = "all";
+  let afterFilter = "all";
   let matchingAccessGranted = false;
 
   (window.TIME_SLOTS || []).forEach(slot => $("editSlot").add(new Option(slot, slot)));
@@ -391,6 +403,13 @@
       render();
     });
   });
+  document.querySelectorAll("[data-after-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      afterFilter = button.dataset.afterFilter;
+      document.querySelectorAll("[data-after-filter]").forEach(option => option.setAttribute("aria-pressed", String(option === button)));
+      render();
+    });
+  });
   function render() {
     const query = $("search").value.trim().toLowerCase();
     $("sTotal").textContent = all.length;
@@ -405,7 +424,11 @@
       const matchesSearch = !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query));
       const matchesStatus = statusFilter === "all" || (statusFilter === "completed" ? Boolean(record.checkedIn) : !record.checkedIn);
       const matchesType = typeFilter === "all" || record.registrationType === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
+      const customer = CustomerMatching.resolveCustomer(record, customers);
+      const hasAfter = customer && isAffirmative(customer.hasAfterProject);
+      const matchesAfter = afterFilter === "all"
+        || (afterFilter === "completed" ? Boolean(record.afterSupportCompleted) : hasAfter && !record.afterSupportCompleted);
+      return matchesSearch && matchesStatus && matchesType && matchesAfter;
     });
     $("filterResult").textContent = `${rows.length}件を表示`;
     $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td data-label="種別"><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td data-label="お客様情報" class="customer-main"><strong>${esc(record.name)}</strong><div class="customer-meta"><span>☎ ${esc(record.tel || "未登録")}</span>${brand !== "—" ? `<span>${esc(brand)}</span>` : ""}${record.adminMemo ? `<span title="${esc(record.adminMemo)}">📝 メモあり</span>` : ""}</div></td><td data-label="時間帯">${esc(record.slot || "指定なし")}</td><td data-label="架電状況">${callStatus}</td><td data-label="判定">${followUp}</td><td data-label="ネックストラップ">${strapCell}</td><td data-label="顧客情報" class="stacked-detail"><div class="detail-row"><span>引渡</span><b>${esc(customer?.handoverDate || "—")}</b></div><div class="detail-row"><span>ランク</span><b>${esc(customer?.rank || "—")}</b></div><div class="detail-row"><span>カルテ</span><b>${esc(customer?.hasAfterProject || "—")}</b></div><div class="detail-row"><span>対応</span>${afterDone}</div></td><td data-label="受付状況" class="reception-detail">${state}<small>${checkedInAt || "受付時刻なし"}<br>対応：${esc(record.checkedInBy || "—")}</small></td><td data-label="操作"><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
@@ -574,6 +597,8 @@
     const adults = records.reduce((sum, record) => sum + countValue(record.adultCount || record.partySize), 0);
     const children = records.reduce((sum, record) => sum + countValue(record.childCount), 0);
     const valid = general.filter(record => followUpStatus(record) === "valid").length;
+    const ownerVisits = checkedIn.filter(record => record.registrationType === "owner");
+    const ownerAfterCompleted = ownerVisits.filter(record => record.afterSupportCompleted).length;
     $("aGroups").textContent = records.length.toLocaleString("ja-JP");
     $("aPeople").textContent = (adults + children).toLocaleString("ja-JP");
     $("aAdults").textContent = adults.toLocaleString("ja-JP");
@@ -584,6 +609,10 @@
     const awarenessKnown = awarenessAnswered.filter(record => record.companyAwareness === "known").length;
     $("aAwarenessRate").textContent = `${awarenessAnswered.length ? Math.round(awarenessKnown / awarenessAnswered.length * 100) : 0}%`;
     $("aAwarenessNote").textContent = `回答 ${awarenessAnswered.length}組中 ${awarenessKnown}組`;
+    $("aOwnerVisits").textContent = ownerVisits.length.toLocaleString("ja-JP");
+    $("aOwnerAfterCompleted").textContent = ownerAfterCompleted.toLocaleString("ja-JP");
+    $("aOwnerAfterRate").textContent = `${ownerVisits.length ? Math.round(ownerAfterCompleted / ownerVisits.length * 100) : 0}%`;
+    $("aOwnerAfterNote").textContent = `${ownerVisits.length.toLocaleString("ja-JP")}組中 ${ownerAfterCompleted.toLocaleString("ja-JP")}組`;
     $("aRate").textContent = `来場率 ${all.length ? Math.round(checkedIn.length / all.length * 100) : 0}%（予約 ${all.length}組）`;
     $("aValidRate").textContent = `一般${$("analyticsScope").value === "all" ? "予約" : "来場"}者の ${general.length ? Math.round(valid / general.length * 100) : 0}%`;
     $("analyticsSubtitle").textContent = `${E.name || "イベント"} ${E.dateLabel || ""}｜最終更新 ${new Date().toLocaleTimeString("ja-JP", { hour:"2-digit", minute:"2-digit" })}`;
