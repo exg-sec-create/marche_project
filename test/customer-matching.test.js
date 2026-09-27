@@ -72,6 +72,18 @@ test("searches the existing customer list across common fields", () => {
   assert.deepEqual(matching.searchCustomers(customers, "  "), []);
 });
 
+test("matching list contains only owners and supports registration search", () => {
+  const registrations = [
+    { id:"owner-1", registrationType:"owner", name:"佐藤 太郎", tel:"090-1234-5678", email:"sato@example.com", address:"山形市" },
+    { id:"owner-2", registrationType:"owner", name:"鈴木 花子", matchedCustomerId:"C-200", matchedCustomerName:"鈴木花子" },
+    { id:"general-1", registrationType:"general", name:"佐藤 太郎", tel:"090-1234-5678" }
+  ];
+  assert.deepEqual(matching.filterOwnerRegistrations(registrations, "").map(record => record.id), ["owner-1", "owner-2"]);
+  assert.deepEqual(matching.filterOwnerRegistrations(registrations, "佐藤太郎").map(record => record.id), ["owner-1"]);
+  assert.deepEqual(matching.filterOwnerRegistrations(registrations, "09012345678").map(record => record.id), ["owner-1"]);
+  assert.deepEqual(matching.filterOwnerRegistrations(registrations, "C-200").map(record => record.id), ["owner-2"]);
+});
+
 test("omitted CSV columns do not become blank updates", () => {
   const customer = matching.rowsToCustomers(matching.parseCsv("顧客ID,顧客名1氏名\n1,山田太郎"))[0];
   assert.equal(Object.hasOwn(customer, "rank"), false);
