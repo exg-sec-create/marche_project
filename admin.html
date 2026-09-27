@@ -135,6 +135,7 @@
     .status-filter { grid-column:auto; display:block; }
     .status-filter legend { float:none; margin:0 0 5px; padding:0; }
     .filter-options { display:grid; grid-template-columns:repeat(3,1fr); width:100%; }
+    .type-filter-options { grid-template-columns:repeat(2,1fr); }
     .filter-result { display:block; margin:6px 0 0; text-align:right; }
     .page-tabs { width:100%; overflow-x:auto; }
     .page-tab { flex:1 0 auto; padding:10px 12px; }
@@ -201,6 +202,15 @@
   <div class="toolbar">
     <input id="search" placeholder="名前・電話・メールで検索" />
     <button class="btn" id="csv">CSVを書き出す</button>
+    <fieldset class="status-filter">
+      <legend>顧客種別</legend>
+      <div class="filter-options type-filter-options">
+        <button type="button" class="filter-button" data-type-filter="all" aria-pressed="true">すべて</button>
+        <button type="button" class="filter-button" data-type-filter="owner" aria-pressed="false">オーナー</button>
+        <button type="button" class="filter-button" data-type-filter="general" aria-pressed="false">一般</button>
+        <button type="button" class="filter-button" data-type-filter="referral" aria-pressed="false">紹介</button>
+      </div>
+    </fieldset>
     <fieldset class="status-filter">
       <legend>受付状態</legend>
       <div class="filter-options">
@@ -349,6 +359,7 @@
   let matchingRegistrationId = null;
   let qrDialogId = null;
   let statusFilter = "all";
+  let typeFilter = "all";
   let matchingAccessGranted = false;
 
   (window.TIME_SLOTS || []).forEach(slot => $("editSlot").add(new Option(slot, slot)));
@@ -373,6 +384,13 @@
       render();
     });
   });
+  document.querySelectorAll("[data-type-filter]").forEach(button => {
+    button.addEventListener("click", () => {
+      typeFilter = button.dataset.typeFilter;
+      document.querySelectorAll("[data-type-filter]").forEach(option => option.setAttribute("aria-pressed", String(option === button)));
+      render();
+    });
+  });
   function render() {
     const query = $("search").value.trim().toLowerCase();
     $("sTotal").textContent = all.length;
@@ -386,7 +404,8 @@
     const rows = all.filter(record => {
       const matchesSearch = !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query));
       const matchesStatus = statusFilter === "all" || (statusFilter === "completed" ? Boolean(record.checkedIn) : !record.checkedIn);
-      return matchesSearch && matchesStatus;
+      const matchesType = typeFilter === "all" || record.registrationType === typeFilter;
+      return matchesSearch && matchesStatus && matchesType;
     });
     $("filterResult").textContent = `${rows.length}件を表示`;
     $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td data-label="種別"><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td data-label="お客様情報" class="customer-main"><strong>${esc(record.name)}</strong><div class="customer-meta"><span>☎ ${esc(record.tel || "未登録")}</span>${brand !== "—" ? `<span>${esc(brand)}</span>` : ""}${record.adminMemo ? `<span title="${esc(record.adminMemo)}">📝 メモあり</span>` : ""}</div></td><td data-label="時間帯">${esc(record.slot || "指定なし")}</td><td data-label="架電状況">${callStatus}</td><td data-label="判定">${followUp}</td><td data-label="ネックストラップ">${strapCell}</td><td data-label="顧客情報" class="stacked-detail"><div class="detail-row"><span>引渡</span><b>${esc(customer?.handoverDate || "—")}</b></div><div class="detail-row"><span>ランク</span><b>${esc(customer?.rank || "—")}</b></div><div class="detail-row"><span>カルテ</span><b>${esc(customer?.hasAfterProject || "—")}</b></div><div class="detail-row"><span>対応</span>${afterDone}</div></td><td data-label="受付状況" class="reception-detail">${state}<small>${checkedInAt || "受付時刻なし"}<br>対応：${esc(record.checkedInBy || "—")}</small></td><td data-label="操作"><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
