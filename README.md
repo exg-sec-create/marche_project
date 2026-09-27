@@ -6,7 +6,7 @@
 - OB様紹介のお客様用・当日受付フォーム: `referral.html`
 - 業者用受付フォーム: `vendor.html`
 - QRチケット再表示: `ticket.html`
-- オーナー様用・当日受付 QR表示テスト: `owner-today-qr-test.html`
+- オーナー様用・当日受付 QRチケット: `owner-today-qr.html`
 - 受付スキャナー（スタッフ）: `checkin.html`
 - 運営ダッシュボード: `admin.html`
 - 設定（ここだけ編集）: `firebase-config.js`
@@ -71,7 +71,7 @@ Source: **Deploy from a branch** → Branch: **main** / **/(root)** → Save。
 https://exg-sec-create.github.io/marche_project/            ← 削除済み（専用フォームをご利用ください）
 https://exg-sec-create.github.io/marche_project/owner.html  ← オーナー様用（事前受付・来場希望時間あり）
 https://exg-sec-create.github.io/marche_project/owner-today.html ← オーナー様用（当日受付・来場希望時間なし）
-https://exg-sec-create.github.io/marche_project/owner-today-qr-test.html ← オーナー様用・当日受付の送信後QR表示（テスト専用）
+https://exg-sec-create.github.io/marche_project/owner-today-qr.html ← オーナー様用・当日受付のQRチケット
 https://exg-sec-create.github.io/marche_project/general.html ← 一般用
 https://exg-sec-create.github.io/marche_project/referral.html ← OB様紹介のお客様用（当日登録）
 https://exg-sec-create.github.io/marche_project/vendor.html ← 業者用
@@ -80,7 +80,7 @@ https://exg-sec-create.github.io/marche_project/admin.html   ← 運営
 ```
 カメラ利用（受付）は HTTPS 必須ですが、GitHub Pages は HTTPS なので問題ありません。
 
-`owner-today-qr-test.html` は送信後画面の表示調整専用です。Firestoreへの登録は行わず、既存の当日受付フォームや本番のQR表示には影響しません。表示名を変えて確認する場合は、URL末尾に `?name=山田%20太郎` のように指定できます。
+`owner-today-qr.html` は現在、送信後画面の表示確認用です。公開URLを変更せずに本番用へ切り替えられるよう、ファイル名には環境を表す語を含めていません。Firestoreへの登録は行わず、既存の当日受付フォームや本番のQR表示には影響しません。表示名を変えて確認する場合は、URL末尾に `?name=山田%20太郎` のように指定できます。
 
 ---
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>オーナー様用・当日受付 QR表示テスト</title>
+<title>オーナー様用・当日受付 QRチケット</title>
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -19,17 +19,17 @@
       <div class="top"></div>
       <div class="body">
         <div class="evt" id="eventName">Life Style Market 2026</div>
-        <div class="name" id="ticketName">テスト オーナー 様</div>
+        <div class="name" id="ticketName">オーナー 様</div>
         <span class="slot">オーナー様受付</span>
         <span class="slot">時間指定なし</span>
-        <div class="qrbox" id="qr" aria-label="テスト用QRコード"></div>
+        <div class="qrbox" id="qr" aria-label="受付用QRコード"></div>
         <div class="hint" id="ticketDate">2026.9.27 SUN ・ 9:00–15:30</div>
       </div>
       <div class="perf"><span class="notch l"></span><span class="notch r"></span></div>
       <div class="foot"><div id="ticketVenue">会場：ビッグウイング山形</div></div>
     </div>
 
-    <p class="info"><b>テスト専用ページです。</b><span>フォーム送信や受付データの登録は行いません。この画面は本番のオーナー様当日受付には影響せず、QR表示画面の変更確認に利用できます。</span></p>
+    <p class="info"><b>表示確認用ページです。</b><span>現在はフォーム送信や受付データの登録を行いません。公開URLはそのままに、今後本番用のQRチケットへ切り替えられます。</span></p>
   </section>
 </main>
 
@@ -38,15 +38,15 @@
 <script>
   const eventInfo = window.EVENT || {};
   const params = new URLSearchParams(location.search);
-  const testName = params.get("name") || "テスト オーナー";
+  const previewName = params.get("name") || "オーナー";
   const eventTitle = [eventInfo.name || "Life Style Market", eventInfo.year || "2026"].join(" ");
 
   document.getElementById("eventName").textContent = eventTitle;
-  document.getElementById("ticketName").textContent = testName + " 様";
+  document.getElementById("ticketName").textContent = previewName + " 様";
   document.getElementById("ticketDate").textContent = ((eventInfo.dateLabel || "") + " " + (eventInfo.dow || "") + " ・ " + (eventInfo.timeLabel || "")).trim();
   document.getElementById("ticketVenue").textContent = "会場：" + (eventInfo.venue || "ビッグウイング山形");
 
-  // プレビュー内だけで完結する値を使用し、本番の受付用QRと取り違えないようにする。
+  // 現在はプレビュー内だけで完結する値を使用し、本番の受付用QRと取り違えないようにする。
   new QRCode(document.getElementById("qr"), {
     text: location.href,
     width: 220,
