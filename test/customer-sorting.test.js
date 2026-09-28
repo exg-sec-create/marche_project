@@ -46,3 +46,23 @@ test("flags possible duplicate owner reservations by normalized phone or name", 
   ];
   assert.deepEqual([...sorting.possibleDuplicateOwnerIds(records)].sort(), ["a", "b", "c"]);
 });
+
+test("counts only advance owner bookings as reservations", () => {
+  const records = [
+    { id:"advance", registrationType:"owner", registrationMode:"advance", slot:"10:00–11:00", checkedIn:true },
+    { id:"onsite-owner", registrationType:"owner", registrationMode:"onsite", checkedIn:true },
+    { id:"general", registrationType:"general", registrationMode:"onsite", checkedIn:true },
+    // Legacy records have no registrationMode; an owner slot identifies the old advance form.
+    { id:"legacy-advance", registrationType:"owner", slot:"11:00–12:00", checkedIn:false },
+    { id:"legacy-onsite", registrationType:"owner", slot:"", checkedIn:true }
+  ];
+
+  const summary = sorting.reservationSummary(records);
+  assert.deepEqual(summary.reservations.map(record => record.id), ["advance", "legacy-advance"]);
+  assert.deepEqual(summary.arrived.map(record => record.id), ["advance"]);
+  assert.equal(summary.rate, 50);
+});
+
+test("an explicit onsite mode is not treated as a reservation even if a slot is later added", () => {
+  assert.equal(sorting.isAdvanceReservation({ registrationType:"owner", registrationMode:"onsite", slot:"10:00–11:00" }), false);
+});

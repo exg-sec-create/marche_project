@@ -354,6 +354,7 @@
     $("err").style.display = "none";
     const data = {
       registrationType: selectedType,
+      registrationMode: selectedType === "owner" && !isOwnerOnsite ? "advance" : "onsite",
       name: $("name").value.trim(), tel: $("tel").value.trim(),
       email: $("email").value.trim(), address: $("address").value.trim(), remarks: $("remarks").value.trim(),
       slot: selectedSlot,
