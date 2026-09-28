@@ -209,7 +209,7 @@
   </nav>
   <section id="customerPanel" class="tab-panel" role="tabpanel" aria-labelledby="customerTab">
   <div class="stats">
-    <div class="stat"><div class="n" id="sTotal">0</div><div class="l">予約総数</div></div>
+    <div class="stat"><div class="n" id="sTotal">0</div><div class="l">受付総数</div></div>
     <div class="stat"><div class="n" id="sOwner" style="color:var(--blue)">0</div><div class="l">オーナー様</div></div>
     <div class="stat"><div class="n" id="sGeneral" style="color:#e87920">0</div><div class="l">一般</div></div>
     <div class="stat"><div class="n" id="sReferral" style="color:#8b4bb5">0</div><div class="l">紹介</div></div>
@@ -285,7 +285,7 @@
     <div class="table-wrap"><table><thead><tr><th>申込者</th><th>電話・住所</th><th>突合状態</th><th>候補顧客</th><th>操作</th></tr></thead><tbody id="matchingRows"></tbody></table></div>
   </section>
   <section id="analyticsPanel" class="tab-panel" role="tabpanel" aria-labelledby="analyticsTab" hidden>
-    <div class="analytics-head"><div><h2>来場・マーケティング分析</h2><p id="analyticsSubtitle">イベント成果をリアルタイムに集計</p></div><div class="analytics-actions"><select id="analyticsScope" aria-label="集計対象"><option value="checkedIn">来場者のみ</option><option value="all">全予約者</option></select><button class="act" id="printReport">結果を印刷</button></div></div>
+    <div class="analytics-head"><div><h2>来場・マーケティング分析</h2><p id="analyticsSubtitle">イベント成果をリアルタイムに集計</p></div><div class="analytics-actions"><select id="analyticsScope" aria-label="集計対象"><option value="checkedIn">来場者のみ</option><option value="all">全受付者</option></select><button class="act" id="printReport">結果を印刷</button></div></div>
     <div class="kpis">
       <div class="kpi accent"><div class="k-label">来場組数</div><div class="k-value" id="aGroups">0</div><div class="k-note" id="aRate">来場率 0%</div></div>
       <div class="kpi"><div class="k-label">来場者数</div><div class="k-value" id="aPeople">0</div><div class="k-note">大人＋子ども</div></div>
@@ -662,6 +662,7 @@
 
   function renderAnalytics() {
     const checkedIn = all.filter(record => record.checkedIn);
+    const reservationSummary = CustomerSorting.reservationSummary(all);
     const records = $("analyticsScope").value === "all" ? all : checkedIn;
     const general = records.filter(record => record.registrationType === "general");
     const adults = records.reduce((sum, record) => sum + countValue(record.adultCount || record.partySize), 0);
@@ -683,8 +684,8 @@
     $("aOwnerAfterCompleted").textContent = ownerAfterCompleted.toLocaleString("ja-JP");
     $("aOwnerAfterRate").textContent = `${ownerVisits.length ? Math.round(ownerAfterCompleted / ownerVisits.length * 100) : 0}%`;
     $("aOwnerAfterNote").textContent = `${ownerVisits.length.toLocaleString("ja-JP")}組中 ${ownerAfterCompleted.toLocaleString("ja-JP")}組`;
-    $("aRate").textContent = `来場率 ${all.length ? Math.round(checkedIn.length / all.length * 100) : 0}%（予約 ${all.length}組）`;
-    $("aValidRate").textContent = `一般${$("analyticsScope").value === "all" ? "予約" : "来場"}者の ${general.length ? Math.round(valid / general.length * 100) : 0}%`;
+    $("aRate").textContent = `予約来場率 ${reservationSummary.rate}%（事前予約 ${reservationSummary.reservations.length}組・来場 ${reservationSummary.arrived.length}組）`;
+    $("aValidRate").textContent = `一般${$("analyticsScope").value === "all" ? "受付" : "来場"}者の ${general.length ? Math.round(valid / general.length * 100) : 0}%`;
     $("analyticsSubtitle").textContent = `${E.name || "イベント"} ${E.dateLabel || ""}｜最終更新 ${new Date().toLocaleTimeString("ja-JP", { hour:"2-digit", minute:"2-digit" })}`;
 
     const hours = checkedIn.reduce((counts, record) => { const date = record.checkedInAt?.toDate?.(); if (date) { const key = `${String(date.getHours()).padStart(2,"0")}:00`; counts[key] = (counts[key] || 0) + 1; } return counts; }, {});

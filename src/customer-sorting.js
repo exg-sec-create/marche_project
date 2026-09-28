@@ -60,5 +60,24 @@
     return new Set([...groups.values()].filter(ids => ids.length > 1).flat());
   }
 
-  return { byName, byCheckedInAt, arrivalSlot, possibleDuplicateOwnerIds };
+  // 事前予約はオーナー様向けフォームだけで受け付ける。当日受付を「予約」に
+  // 含めないよう、新しいデータでは registrationMode を優先し、既存データは
+  // 事前予約で必須だった時間帯の有無から判定する。
+  function isAdvanceReservation(record) {
+    if (!record || record.registrationType !== "owner") return false;
+    if (record.registrationMode) return record.registrationMode === "advance";
+    return Boolean(String(record.slot || "").trim());
+  }
+
+  function reservationSummary(records) {
+    const reservations = (records || []).filter(isAdvanceReservation);
+    const arrived = reservations.filter(record => record.checkedIn);
+    return {
+      reservations,
+      arrived,
+      rate:reservations.length ? Math.round(arrived.length / reservations.length * 100) : 0
+    };
+  }
+
+  return { byName, byCheckedInAt, arrivalSlot, possibleDuplicateOwnerIds, isAdvanceReservation, reservationSummary };
 });
