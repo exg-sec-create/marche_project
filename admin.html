@@ -15,7 +15,6 @@
   .slotcard:hover { border-color:#79abc1; background:#f7fbfd; }
   .slotcard.active { border-color:var(--blue); background:#eaf4fd; box-shadow:0 0 0 2px #277eaa22; }
   .slotcard .s { font-weight:700; font-size:.85rem; } .slotcard .v { font-size:.82rem; color:var(--muted); }
-  .slotcard .arrival { margin-top:3px; color:#166534; font-size:.78rem; font-weight:700; }
   .toolbar { display:grid; grid-template-columns:minmax(260px,1fr) auto auto; gap:10px; margin-bottom:14px; }
   .toolbar input { flex:1; min-width:200px; }
   .sort-control { display:flex; align-items:center; gap:8px; color:var(--muted); font-size:.82rem; font-weight:700; white-space:nowrap; }
@@ -461,7 +460,7 @@
     $("sFollowUp").textContent = all.filter(record => followUpStatus(record) === "valid").length;
     const slots = window.TIME_SLOTS || [];
     const grid = $("slotGrid"); grid.innerHTML = "";
-    slots.forEach(slot => { const summary = CustomerSorting.reservationSlotSummary(all, slot); const arrivalSummary = CustomerSorting.arrivalSlotSummary(all, slot, slots); const selected = slotFilter?.type === "reservation" && slotFilter.slot === slot; const card = document.createElement("button"); card.type = "button"; card.className = `slotcard${selected ? " active" : ""}`; card.setAttribute("aria-pressed", String(selected)); card.title = "この時間帯を予約した顧客を表示"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${summary.reservations.length} ・ 予約者受付 ${summary.arrived.length}</div><div class="arrival">総来場数 ${arrivalSummary.arrivals.length}組（うち当日来場 ${arrivalSummary.onsite.length}組）</div>`; card.onclick = () => { slotFilter = selected ? null : { type:"reservation", slot }; render(); }; grid.appendChild(card); });
+    slots.forEach(slot => { const summary = CustomerSorting.reservationSlotSummary(all, slot); const selected = slotFilter?.type === "reservation" && slotFilter.slot === slot; const card = document.createElement("button"); card.type = "button"; card.className = `slotcard${selected ? " active" : ""}`; card.setAttribute("aria-pressed", String(selected)); card.title = "この時間帯を予約した顧客を表示"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${summary.reservations.length} ・ 予約者受付 ${summary.arrived.length}</div>`; card.onclick = () => { slotFilter = selected ? null : { type:"reservation", slot }; render(); }; grid.appendChild(card); });
     let rows = all.filter(record => {
       const matchesSearch = !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query));
       const matchesStatus = statusFilter === "all" || (statusFilter === "completed" ? Boolean(record.checkedIn) : !record.checkedIn);
