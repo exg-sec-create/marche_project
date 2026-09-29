@@ -61,6 +61,13 @@ test("manual match overrides the automatic candidate", () => {
   assert.equal(matching.matchState(registration, customers), "confirmed");
 });
 
+test("provides Japanese labels for CSV matching states", () => {
+  assert.equal(matching.matchStateLabel("confirmed"), "確定済み");
+  assert.equal(matching.matchStateLabel("suggested"), "自動候補");
+  assert.equal(matching.matchStateLabel("review"), "要確認");
+  assert.equal(matching.matchStateLabel("none"), "候補なし");
+});
+
 test("searches the existing customer list across common fields", () => {
   const customers = [
     { customerId:"C-2", name1:"鈴木 花子", tel1:"080-1111-2222", newAddress:"山形市七日町", store:"山形店" },

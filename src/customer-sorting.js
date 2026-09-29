@@ -87,5 +87,13 @@
     };
   }
 
-  return { byName, byCheckedInAt, arrivalSlot, possibleDuplicateOwnerIds, isAdvanceReservation, reservationSummary, reservationSlotSummary };
+  function arrivalSlotSummary(records, slot, slots) {
+    const arrivals = (records || []).filter(record => record.checkedIn && arrivalSlot(record, slots) === slot);
+    return {
+      arrivals,
+      onsite:arrivals.filter(record => !isAdvanceReservation(record))
+    };
+  }
+
+  return { byName, byCheckedInAt, arrivalSlot, possibleDuplicateOwnerIds, isAdvanceReservation, reservationSummary, reservationSlotSummary, arrivalSlotSummary };
 });

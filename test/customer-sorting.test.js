@@ -79,3 +79,17 @@ test("summarizes each slot using advance reservations only", () => {
   assert.deepEqual(summary.reservations.map(record => record.id), ["waiting", "arrived"]);
   assert.deepEqual(summary.arrived.map(record => record.id), ["arrived"]);
 });
+
+test("summarizes total slot arrivals and the onsite subset", () => {
+  const slots = ["10:00–11:00", "11:00–12:00"];
+  const records = [
+    { id:"advance", registrationType:"owner", registrationMode:"advance", checkedIn:true, checkedInAt:new Date(2026, 8, 27, 10, 10) },
+    { id:"onsite", registrationType:"owner", registrationMode:"onsite", checkedIn:true, checkedInAt:new Date(2026, 8, 27, 10, 20) },
+    { id:"general", registrationType:"general", checkedIn:true, checkedInAt:new Date(2026, 8, 27, 10, 30) },
+    { id:"waiting", registrationType:"owner", registrationMode:"advance", checkedIn:false }
+  ];
+
+  const summary = sorting.arrivalSlotSummary(records, "10:00–11:00", slots);
+  assert.deepEqual(summary.arrivals.map(record => record.id), ["advance", "onsite", "general"]);
+  assert.deepEqual(summary.onsite.map(record => record.id), ["onsite", "general"]);
+});

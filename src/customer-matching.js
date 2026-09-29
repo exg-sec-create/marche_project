@@ -138,6 +138,10 @@
     return top.score >= 100 && !tied ? "suggested" : "review";
   }
 
+  function matchStateLabel(state) {
+    return ({ confirmed:"確定済み", suggested:"自動候補", review:"要確認", none:"候補なし" })[state] || "候補なし";
+  }
+
   // 担当者が確定した顧客を優先し、未確定の場合も最上位候補を自動的に利用する。
   // matchState は未確定のままなので、画面には「自動候補」「要確認」が残る。
   function resolveCustomer(registration, customers) {
@@ -150,5 +154,5 @@
     return Object.keys(incoming).filter(key => key !== "customerId" && String(existing[key] ?? "") !== String(incoming[key] ?? ""));
   }
 
-  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, searchCustomers, filterOwnerRegistrations, matchState, resolveCustomer, customerChanges };
+  return { HEADER_ALIASES, parseCsv, rowsToCustomers, normalizeName, normalizeTel, normalizeAddress, scoreCustomer, findCandidates, searchCustomers, filterOwnerRegistrations, matchState, matchStateLabel, resolveCustomer, customerChanges };
 });
