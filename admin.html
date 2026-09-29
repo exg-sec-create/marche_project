@@ -410,7 +410,7 @@
   let statusFilter = "all";
   let typeFilter = "all";
   let afterFilter = "all";
-  let arrivalSlotFilter = "";
+  let slotFilter = null;
   let matchingAccessGranted = false;
 
   (window.TIME_SLOTS || []).forEach(slot => $("editSlot").add(new Option(slot, slot)));
@@ -460,7 +460,7 @@
     $("sFollowUp").textContent = all.filter(record => followUpStatus(record) === "valid").length;
     const slots = window.TIME_SLOTS || [];
     const grid = $("slotGrid"); grid.innerHTML = "";
-    slots.forEach(slot => { const records = all.filter(record => record.slot === slot); const checkedIn = records.filter(record => record.checkedIn).length; const actualArrivals = all.filter(record => record.checkedIn && CustomerSorting.arrivalSlot(record, slots) === slot).length; const card = document.createElement("button"); card.type = "button"; card.className = `slotcard${arrivalSlotFilter === slot ? " active" : ""}`; card.setAttribute("aria-pressed", String(arrivalSlotFilter === slot)); card.title = "この時間に実際に受付した顧客を表示"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${records.length} ・ 予約者受付 ${checkedIn}</div><div class="arrival">当日来場 ${actualArrivals}</div>`; card.onclick = () => { arrivalSlotFilter = arrivalSlotFilter === slot ? "" : slot; render(); }; grid.appendChild(card); });
+    slots.forEach(slot => { const summary = CustomerSorting.reservationSlotSummary(all, slot); const actualArrivals = all.filter(record => record.checkedIn && CustomerSorting.arrivalSlot(record, slots) === slot).length; const selected = slotFilter?.type === "reservation" && slotFilter.slot === slot; const card = document.createElement("button"); card.type = "button"; card.className = `slotcard${selected ? " active" : ""}`; card.setAttribute("aria-pressed", String(selected)); card.title = "この時間帯を予約した顧客を表示"; card.innerHTML = `<div class="s">${esc(slot)}</div><div class="v">予約 ${summary.reservations.length} ・ 予約者受付 ${summary.arrived.length}</div><div class="arrival">当日来場 ${actualArrivals}</div>`; card.onclick = () => { slotFilter = selected ? null : { type:"reservation", slot }; render(); }; grid.appendChild(card); });
     let rows = all.filter(record => {
       const matchesSearch = !query || [record.name, record.tel, record.email, record.referrerName, record.adminMemo].some(value => (value || "").toLowerCase().includes(query));
       const matchesStatus = statusFilter === "all" || (statusFilter === "completed" ? Boolean(record.checkedIn) : !record.checkedIn);
@@ -469,13 +469,14 @@
       const hasAfter = customer && isAffirmative(customer.hasAfterProject);
       const matchesAfter = afterFilter === "all"
         || (afterFilter === "completed" ? Boolean(record.afterSupportCompleted) : hasAfter && !record.afterSupportCompleted);
-      const matchesArrivalSlot = !arrivalSlotFilter || CustomerSorting.arrivalSlot(record, slots) === arrivalSlotFilter;
-      return matchesSearch && matchesStatus && matchesType && matchesAfter && matchesArrivalSlot;
+      const matchesSlot = !slotFilter
+        || (slotFilter.type === "reservation" ? CustomerSorting.isAdvanceReservation(record) && record.slot === slotFilter.slot : CustomerSorting.arrivalSlot(record, slots) === slotFilter.slot);
+      return matchesSearch && matchesStatus && matchesType && matchesAfter && matchesSlot;
     });
     const sort = $("customerSort").value;
     if (sort === "name-asc" || sort === "name-desc") rows = CustomerSorting.byName(rows, sort === "name-asc" ? "asc" : "desc");
     if (sort === "checkin-asc" || sort === "checkin-desc") rows = CustomerSorting.byCheckedInAt(rows, sort === "checkin-asc" ? "asc" : "desc");
-    $("filterResult").textContent = `${rows.length}件を表示${arrivalSlotFilter ? `（当日来場 ${arrivalSlotFilter}）` : ""}`;
+    $("filterResult").textContent = `${rows.length}件を表示${slotFilter ? `（${slotFilter.type === "reservation" ? "予約" : "当日来場"} ${slotFilter.slot}）` : ""}`;
     const duplicateOwnerIds = CustomerSorting.possibleDuplicateOwnerIds(all);
     $("rows").innerHTML = rows.map(record => { const checkedInAt = record.checkedInAt?.toDate ? fmt(record.checkedInAt.toDate()) : ""; const actualSlot = CustomerSorting.arrivalSlot(record, slots); const checkedInTime = checkedInAt ? `<button type="button" class="checkin-time" data-arrival-slot="${esc(actualSlot)}" title="この時間に受付した顧客を表示">${esc(checkedInAt)}</button>` : "受付時刻なし"; const duplicateAlert = duplicateOwnerIds.has(record.id) ? '<span class="duplicate-alert" title="氏名または電話番号が一致するオーナー事前予約があります">⚠ 重複の可能性</span>' : ""; const state = record.checkedIn ? '<span class="pill in">受付済</span>' : '<span class="pill out">未受付</span>'; const checkAction = record.checkedIn ? `<button class="act" data-un="${record.id}">受付取消</button>` : `<button class="act" data-in="${record.id}">手動受付</button>`; const qrAction = `<button class="act qr" data-qr="${record.id}" title="受付用QRコードを表示">QR表示</button>`; const deleteAction = canDelete() ? `<button class="act delete" data-delete="${record.id}">削除</button>` : ""; const status = followUpStatus(record); const followUp = record.registrationType === "general" ? `<span class="pill follow-up-${status}">${status === "valid" ? "有効客" : "無効客"}</span>` : "—"; const callStatus = record.callStatus ? `<span class="pill call-${esc(record.callStatus)}">${esc(callStatusLabel(record.callStatus))}</span>` : "—"; const brand = record.registrationType === "owner" ? ownerBrandLabel(record.ownerBrand) : "—"; const strap = neckStrapInfo(record); const strapCell = strap ? `<span class="strap" style="--strap-color:${strap.color}">${esc(strap.label)}</span>` : "—"; const customer = CustomerMatching.resolveCustomer(record, customers); const hasAfter = customer && isAffirmative(customer.hasAfterProject); const afterDone = customer ? `<label class="after-check"><input type="checkbox" data-after-complete="${record.id}" ${record.afterSupportCompleted ? "checked" : ""} ${hasAfter ? "" : "disabled"}><span>${record.afterSupportCompleted ? "完了" : "未完了"}</span></label>` : "—"; return `<tr><td data-label="種別"><span class="pill type-${esc(record.registrationType || "general")}">${esc(typeLabel(record.registrationType))}</span></td><td data-label="お客様情報" class="customer-main"><strong>${esc(record.name)}</strong>${duplicateAlert}<div class="customer-meta"><span>☎ ${esc(record.tel || "未登録")}</span>${brand !== "—" ? `<span>${esc(brand)}</span>` : ""}${record.adminMemo ? `<span title="${esc(record.adminMemo)}">📝 メモあり</span>` : ""}</div></td><td data-label="時間帯">${esc(record.slot || "指定なし")}</td><td data-label="架電状況">${callStatus}</td><td data-label="判定">${followUp}</td><td data-label="ネックストラップ">${strapCell}</td><td data-label="顧客情報" class="stacked-detail"><div class="detail-row"><span>引渡</span><b>${esc(customer?.handoverDate || "—")}</b></div><div class="detail-row"><span>ランク</span><b>${esc(customer?.rank || "—")}</b></div><div class="detail-row"><span>カルテ</span><b>${esc(customer?.hasAfterProject || "—")}</b></div><div class="detail-row"><span>対応</span>${afterDone}</div></td><td data-label="受付状況" class="reception-detail">${state}<small>${checkedInTime}<br>対応：${esc(record.checkedInBy || "—")}</small></td><td data-label="操作"><div class="actions"><button class="act" data-edit="${record.id}">編集</button>${qrAction}${checkAction}${deleteAction}</div></td></tr>`; }).join("");
     $("rows").querySelectorAll("[data-in]").forEach(button => button.onclick = () => setCheck(button.dataset.in, true));
@@ -484,7 +485,7 @@
     $("rows").querySelectorAll("[data-qr]").forEach(button => button.onclick = () => openQrDialog(button.dataset.qr));
     $("rows").querySelectorAll("[data-delete]").forEach(button => button.onclick = () => deleteRegistration(button.dataset.delete));
     $("rows").querySelectorAll("[data-after-complete]").forEach(input => input.onchange = () => setAfterSupportCompleted(input.dataset.afterComplete, input.checked, input));
-    $("rows").querySelectorAll("[data-arrival-slot]").forEach(button => button.onclick = () => { if (!button.dataset.arrivalSlot) return; arrivalSlotFilter = button.dataset.arrivalSlot; render(); });
+    $("rows").querySelectorAll("[data-arrival-slot]").forEach(button => button.onclick = () => { if (!button.dataset.arrivalSlot) return; slotFilter = { type:"arrival", slot:button.dataset.arrivalSlot }; render(); });
     renderMatching();
     renderAnalytics();
   }

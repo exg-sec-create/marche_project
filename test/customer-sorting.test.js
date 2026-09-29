@@ -66,3 +66,16 @@ test("counts only advance owner bookings as reservations", () => {
 test("an explicit onsite mode is not treated as a reservation even if a slot is later added", () => {
   assert.equal(sorting.isAdvanceReservation({ registrationType:"owner", registrationMode:"onsite", slot:"10:00–11:00" }), false);
 });
+
+test("summarizes each slot using advance reservations only", () => {
+  const records = [
+    { id:"waiting", registrationType:"owner", registrationMode:"advance", slot:"10:00–11:00", checkedIn:false },
+    { id:"arrived", registrationType:"owner", registrationMode:"advance", slot:"10:00–11:00", checkedIn:true },
+    { id:"onsite", registrationType:"owner", registrationMode:"onsite", slot:"10:00–11:00", checkedIn:true },
+    { id:"other-slot", registrationType:"owner", registrationMode:"advance", slot:"11:00–12:00", checkedIn:true }
+  ];
+
+  const summary = sorting.reservationSlotSummary(records, "10:00–11:00");
+  assert.deepEqual(summary.reservations.map(record => record.id), ["waiting", "arrived"]);
+  assert.deepEqual(summary.arrived.map(record => record.id), ["arrived"]);
+});
