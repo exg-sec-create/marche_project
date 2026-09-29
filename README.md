@@ -150,3 +150,5 @@ npx firebase-tools deploy --only firestore:rules --project marche2026-86ab6
 - 500組でも安定: 静的配信（Pages CDN）＋ Firestore（自動スケール）。会場Wi-Fi不安定時もオフライン永続化＋起動時プリロードで継続。
 - 無料枠: 予約500＋受付500で書込約1,000・読取数千。Firebase無料枠（書込2万/日・読取5万/日）に収まります。
 - 公式ロゴPNG差し替え: リポジトリに置き、`registration.html` の `<svg class="tent">` と `<h1 class="wordmark">` を `<img src="logo.png">` に置換。
+
+顧客一覧から書き出すCSVの「アフター対応」列には、対応完了の場合は `TRUE`、未完了または未設定の場合は `FALSE` が入ります。「アフター対応者（メールアドレス）」列には、完了チェックを入れたスタッフのログインメールアドレスが入ります（過去データなど、記録がない場合は空欄です）。
