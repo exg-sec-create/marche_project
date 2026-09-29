@@ -127,6 +127,7 @@
   .analytics-card h3 { margin:0; font-size:1rem; color:var(--ink); }
   .card-heading { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:16px; }
   .card-heading small { color:var(--muted); }
+  .analytics-note { display:block; margin-top:10px; color:var(--muted); font-size:.72rem; line-height:1.5; }
   .bar-row { display:grid; grid-template-columns:125px 1fr 46px; align-items:center; gap:10px; margin:11px 0; font-size:.82rem; }
   .bar-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#40515c; }
   .bar-track { height:10px; overflow:hidden; background:#edf2f4; border-radius:99px; }
@@ -298,7 +299,7 @@
       <div class="kpi accent"><div class="k-label">アフター対応率</div><div class="k-value" id="aOwnerAfterRate">0%</div><div class="k-note" id="aOwnerAfterNote">0組中 0組</div></div>
     </div>
     <div class="analytics-grid">
-      <article class="analytics-card"><div class="card-heading"><h3>時間帯別の受付数</h3><small>実際の受付時刻</small></div><div id="hourChart"></div><div class="insight" id="peakInsight">受付データが蓄積されると、ピーク時間を表示します。</div></article>
+      <article class="analytics-card"><div class="card-heading"><h3>時間帯別の受付数</h3><small>実際の受付時刻</small></div><div id="hourChart"></div><small class="analytics-note">※17:00以降の受付については担当者による事後登録等</small><div class="insight" id="peakInsight">受付データが蓄積されると、ピーク時間を表示します。</div></article>
       <article class="analytics-card"><div class="card-heading"><h3>興味のあるブランド</h3><small>回答結果</small></div><div id="brandChart"></div></article>
       <article class="analytics-card"><div class="card-heading"><h3>来場者区分</h3><small>組数ベース</small></div><div id="typeChart"></div></article>
       <article class="analytics-card"><div class="card-heading"><h3>住まいづくりの検討状況</h3><small>一般のお客様</small></div><div id="stageChart"></div></article>
